@@ -10,34 +10,27 @@ import { Logger } from './logger.js';
  * Creates the HTML for a single card, handling different visibility states based on context.
  * @param {object} card - Card data, e.g., { suit: '♥', rank: 'A', visibility: 'owner' }
  * @param {boolean} isPlayerCard - Flag to indicate if the card belongs to the player (the viewer).
+ * @param {number} index - The index of the card in its container, used for animation delay.
  * @returns {string} HTML string for the card.
  */
-function getCardHTML(card, isPlayerCard = false) {
+function getCardHTML(card, isPlayerCard = false, index = 0) {
     if (!card) return '';
+    
+    const animationDelay = `${index * 60}ms`; // Staggered animation delay
 
-    // Determine if the card's face should be shown to the current viewer.
-    // A card's face is shown if:
-    // 1. Its visibility is 'public' (e.g., community cards).
-    // 2. The viewer is the owner (`isPlayerCard` is true) AND its visibility is 'owner'.
     const showFace = (card.visibility === 'public') || (isPlayerCard && card.visibility === 'owner');
 
     if (!showFace) {
-        // For all other cases (e.g., opponent's 'owner' card, anyone's 'hidden' card), show the card back.
-        return '<div class="card card-back"></div>';
+        return `<div class="card card-back" style="--animation-delay: ${animationDelay};"></div>`;
     }
 
-    // --- Render the face-up card ---
     const suitSymbol = { '♥': '♥', '♦': '♦', '♣': '♣', '♠': '♠' }[card.suit] || card.suit;
     let cardClasses = 'card';
     if (card.is_special) cardClasses += ' special';
-    
-    // Add a 'revealed' class for special styling if the card is public (e.g., turned over in a showdown).
-    if (card.visibility === 'public') {
-        cardClasses += ' revealed';
-    }
+    if (card.visibility === 'public') cardClasses += ' revealed';
 
     return `
-        <div class="${cardClasses}" data-suit="${suitSymbol}">
+        <div class="${cardClasses}" data-suit="${suitSymbol}" style="--animation-delay: ${animationDelay};">
             <span class="card-rank">${card.rank}</span>
             <span class="card-suit">${suitSymbol}</span>
         </div>
@@ -79,69 +72,115 @@ export function getGameTableHTML(playerData, enemyData, gameState) {
     const playerHand = AIGame_State.playerCards?.current_hand || [];
     const enemies = enemyData?.enemies || [];
     const userPlayerName = playerData?.name || '{{user}}';
+    const inventoryVisibleClass = AIGame_State.isInventoryVisible ? 'inventory-visible' : '';
+    const potAmount = gameState?.pot_amount ?? 0;
 
-    const opponentsHTML = enemies.map(enemy => {
-        const isEnemyTurn = gameState?.current_turn === enemy.name;
-        const enemyHandHTML = (enemy.hand || []).map(card => getCardHTML(card, false)).join('');
+    let cardAnimationIndex = 0;
 
-        return `
-            <div class="opponent-container ${isEnemyTurn ? 'active-turn' : ''}">
-                <div class="opponent-info">
-                    <div class="opponent-name">${enemy.name || 'Opponent'}</div>
-                    <div class="opponent-style">${enemy.play_style || '...'}</div>
-                </div>
-                <div class="hand opponent-hand">
-                    ${enemyHandHTML}
-                </div>
+    // --- Player Area (always at the bottom) ---
+    const isPlayerTurn = gameState?.current_turn === userPlayerName;
+    const playerHandClasses = `hand horizontal-hand ${playerHand.length > 5 ? 'large-hand' : ''}`;
+    const playerHandHTML = playerHand.map((card, i) => getCardHTML(card, true, cardAnimationIndex++)).join('');
+    const playerAreaHTML = `
+        <div class="player-position-container position-bottom ${isPlayerTurn ? 'active-turn' : ''}">
+            <div class="player-hand-actions">
+                <div class="${playerHandClasses}">${playerHandHTML}</div>
+                <div class="action-buttons">${getActionButtonsHTML(gameState)}</div>
             </div>
-        `;
-    }).join('');
+        </div>
+    `;
 
-    const playerHandHTML = playerHand.map(card => getCardHTML(card, true)).join('');
-    const boardCardsHTML = (gameState?.board_cards || []).map(card => getCardHTML(card, false)).join('');
+    // --- Opponent Areas (dynamically positioned) ---
+    const enemyCount = enemies.length;
+    let opponentsHTML;
+
+    if (enemyCount > 0 && enemyCount <= 2) {
+        const opponentGroupHTML = enemies.map(enemy => {
+            const isEnemyTurn = gameState?.current_turn === enemy.name;
+            const enemyHand = enemy.hand || [];
+            const enemyHandClasses = `hand horizontal-hand ${enemyHand.length > 5 ? 'large-hand' : ''}`;
+            const enemyHandHTML = enemyHand.map((card, i) => getCardHTML(card, false, cardAnimationIndex++)).join('');
+
+            return `
+                <div class="player-position-container ${isEnemyTurn ? 'active-turn' : ''}">
+                    <div class="opponent-container">
+                        <div class="opponent-info">
+                            <div class="opponent-name">${enemy.name || 'Opponent'}</div>
+                            <div class="opponent-style">${enemy.play_style || '...'}</div>
+                        </div>
+                        <div class="${enemyHandClasses}">${enemyHandHTML}</div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        opponentsHTML = `<div class="opponent-area-container position-top">${opponentGroupHTML}</div>`;
+    
+    } else if (enemyCount >= 3) {
+        opponentsHTML = enemies.map((enemy, index) => {
+            let positionClass = '';
+            let handLayoutClass = 'horizontal-hand';
+
+            switch(index) {
+                case 0: 
+                    positionClass = 'position-left';
+                    handLayoutClass = 'vertical-hand';
+                    break;
+                case 1:
+                    positionClass = 'position-top-center';
+                    break;
+                default:
+                case 2:
+                    positionClass = 'position-right';
+                    handLayoutClass = 'vertical-hand';
+                    break;
+            }
+
+            const isEnemyTurn = gameState?.current_turn === enemy.name;
+            const enemyHand = enemy.hand || [];
+            const enemyHandClasses = `hand ${handLayoutClass} ${enemyHand.length > 5 ? 'large-hand' : ''}`;
+            const enemyHandHTML = enemyHand.map((card, i) => getCardHTML(card, false, cardAnimationIndex++)).join('');
+
+            return `
+                <div class="player-position-container ${positionClass} ${isEnemyTurn ? 'active-turn' : ''}">
+                    <div class="opponent-container">
+                        <div class="opponent-info">
+                            <div class="opponent-name">${enemy.name || 'Opponent'}</div>
+                            <div class="opponent-style">${enemy.play_style || '...'}</div>
+                        </div>
+                        <div class="${enemyHandClasses}">${enemyHandHTML}</div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+
+    // --- Central Board Area ---
+    const boardCards = gameState?.board_cards || [];
+    const boardCardsHTML = boardCards.map((card, i) => getCardHTML(card, false, cardAnimationIndex++)).join('');
     const customWagers = gameState?.custom_wagers || [];
     const customWagersHTML = customWagers.map(wager => `
         <div class="custom-wager-item">${wager.player} 赌上了: <strong>${wager.item}</strong></div>
     `).join('');
-
-
-    const inventoryVisibleClass = AIGame_State.isInventoryVisible ? 'inventory-visible' : '';
     
-    const potAmount = gameState?.pot_amount ?? 0;
-    const isPlayerTurn = gameState?.current_turn === userPlayerName;
-
+    // --- Final Assembly ---
     return `
         <div class="game-table-container ${inventoryVisibleClass}">
             <div class="game-table">
                 <div class="felt-surface"></div>
+                <div class="deck-placeholder"><i class="fas fa-dice-d20"></i></div>
                 
-                <div class="game-area opponent-area">
-                    ${opponentsHTML}
-                </div>
-
-                <div class="game-area board-area">
+                <div class="board-area-container">
                     <div class="pot">
                         <div>彩池</div>
                         <div class="pot-amount">$${potAmount.toLocaleString()}</div>
+                        <div class="custom-wagers-area">${customWagersHTML}</div>
                     </div>
-                    <div class="custom-wagers-area">
-                        ${customWagersHTML}
-                    </div>
-                    <div class="community-cards">
-                        ${boardCardsHTML}
-                    </div>
+                    <div class="community-cards hand horizontal-hand">${boardCardsHTML}</div>
                 </div>
 
-                <div class="game-area player-area ${isPlayerTurn ? 'active-turn' : ''}">
-                    <div class="player-hand-actions">
-                        <div class="hand">
-                            ${playerHandHTML}
-                        </div>
-                        <div class="action-buttons">
-                            ${getActionButtonsHTML(gameState)}
-                        </div>
-                    </div>
-                </div>
+                ${playerAreaHTML}
+                ${opponentsHTML}
             </div>
             ${getPlayerInventoryHTML(playerData.inventory || [])}
             <button class="inventory-toggle-btn" title="切换道具栏"><i class="fas fa-chevron-left"></i></button>

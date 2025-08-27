@@ -7,7 +7,7 @@
     --rules-text: #d1d5db;
 }
 
-.rules-view-container {
+#sillypoker-panel .rules-view-container {
     display: flex;
     width: 100%;
     height: 100%;
@@ -15,7 +15,7 @@
     flex-direction: row; /* Ensure list and content are side-by-side */
 }
 
-.rules-list-panel {
+#sillypoker-panel .rules-list-panel {
     width: 200px;
     flex-shrink: 0;
     background-color: var(--rules-list-bg);
@@ -24,13 +24,13 @@
     padding: 10px 0;
 }
 
-.rules-list {
+#sillypoker-panel .rules-list {
     list-style: none;
     padding: 0;
     margin: 0;
 }
 
-.rules-list-item {
+#sillypoker-panel .rules-list-item {
     padding: 12px 20px;
     cursor: pointer;
     color: var(--rules-text);
@@ -39,17 +39,17 @@
     font-size: 14px;
 }
 
-.rules-list-item:hover {
+#sillypoker-panel .rules-list-item:hover {
     background-color: var(--rules-item-hover);
 }
 
-.rules-list-item.active {
+#sillypoker-panel .rules-list-item.active {
     background-color: var(--rules-bg);
     border-left-color: var(--rules-item-active);
     font-weight: 500;
 }
 
-.rules-list-header {
+#sillypoker-panel .rules-list-header {
     padding: 10px 20px;
     font-size: 1rem;
     font-weight: bold;
@@ -59,11 +59,11 @@
     margin-top: 15px;
 }
 
-.rules-list-header:first-child {
+#sillypoker-panel .rules-list-header:first-child {
     margin-top: 0;
 }
 
-.rules-content-panel {
+#sillypoker-panel .rules-content-panel {
     flex-grow: 1;
     padding: 20px 30px;
     overflow-y: auto;
@@ -71,34 +71,34 @@
     min-height: 0; /* Important for nested flex/scroll containers */
 }
 
-.rules-content-display {
+#sillypoker-panel .rules-content-display {
     /* This element now simply holds the content and lets the parent panel scroll. */
 }
 
-.rules-content-display h1,
-.rules-content-display h2,
-.rules-content-display h3 {
+#sillypoker-panel .rules-content-display h1,
+#sillypoker-panel .rules-content-display h2,
+#sillypoker-panel .rules-content-display h3 {
     color: var(--gold-accent);
     border-bottom: 1px solid var(--rules-list-border);
     padding-bottom: 5px;
     margin-top: 20px;
 }
 
-.rules-content-display p {
+#sillypoker-panel .rules-content-display p {
     line-height: 1.6;
     margin-bottom: 15px;
 }
 
-.rules-content-display ul,
-.rules-content-display ol {
+#sillypoker-panel .rules-content-display ul,
+#sillypoker-panel .rules-content-display ol {
     padding-left: 25px;
 }
 
-.rules-content-display li {
+#sillypoker-panel .rules-content-display li {
     margin-bottom: 8px;
 }
 
-.rules-content-display code {
+#sillypoker-panel .rules-content-display code {
     background-color: var(--rules-list-bg);
     padding: 2px 5px;
     border-radius: 4px;

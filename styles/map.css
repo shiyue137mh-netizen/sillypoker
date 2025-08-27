@@ -7,21 +7,22 @@
     --text-light: #e0e0e0;
 }
 
-.map-view-wrapper { 
+#sillypoker-panel .map-view-wrapper { 
     display: flex; 
     flex-direction: row; /* Changed to row for side panel */
     width: 100%; 
     height: 100%; 
     background: var(--map-bg); 
 }
-.map-main-content {
+#sillypoker-panel .map-main-content {
     flex-grow: 1;
     display: flex;
     flex-direction: column;
     overflow: hidden; /* Important for pan-zoom container */
 }
-.map-details-panel {
-    width: 250px;
+/* MODIFIED: Restructured for better centering */
+#sillypoker-panel .map-details-panel {
+    width: 300px;
     flex-shrink: 0;
     background: #111827;
     border-left: 1px solid #374151;
@@ -29,9 +30,19 @@
     color: var(--text-light);
     display: flex;
     flex-direction: column;
-    gap: 15px;
 }
-.details-placeholder {
+/* ADDED: A new container for the main content to enforce centering */
+#sillypoker-panel .details-main-content {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    text-align: center;
+}
+
+#sillypoker-panel .details-placeholder {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -40,37 +51,40 @@
     height: 100%;
     font-style: italic;
 }
-.details-title {
+#sillypoker-panel .details-title {
     font-size: 1.5rem;
     font-weight: 500;
     color: var(--gold-accent);
     text-align: center;
 }
-.details-icon {
+#sillypoker-panel .details-icon {
     text-align: center;
     font-size: 4rem;
     opacity: 0.8;
 }
-.details-description {
+#sillypoker-panel .details-description {
     font-size: 0.9rem;
     color: #9ca3af;
     text-align: center;
     line-height: 1.5;
+    word-break: break-word; /* FIX: Prevents text overflow */
 }
-.details-instructions {
-    margin-top: auto;
+#sillypoker-panel .details-instructions {
+    margin-top: auto; /* Pushes to the bottom */
     font-size: 0.8rem;
     color: #4b5563;
     text-align: center;
+    padding-top: 10px; /* Give it some space from content above */
 }
 
-.details-actions {
+#sillypoker-panel .details-actions {
     margin-top: 15px;
     display: flex;
     justify-content: center;
+    width: 100%; /* Ensure button can be full width */
 }
 
-.map-travel-btn {
+#sillypoker-panel .map-travel-btn {
     background: #4f46e5; 
     color: white; 
     border: none; 
@@ -83,11 +97,11 @@
     transition: background-color 0.2s;
 }
 
-.map-travel-btn:hover { 
+#sillypoker-panel .map-travel-btn:hover { 
     background: #4338ca; 
 }
 
-.map-header { 
+#sillypoker-panel .map-header { 
     display: flex; 
     justify-content: space-between; 
     align-items: center; 
@@ -97,16 +111,16 @@
     flex-shrink: 0; 
     color: var(--text-light); 
 }
-.map-header-title { 
+#sillypoker-panel .map-header-title { 
     margin: 0;
     font-size: 16px; 
 }
-.map-header-buttons { 
+#sillypoker-panel .map-header-buttons { 
     display: flex; 
     gap: 10px; 
     align-items: center;
 }
-.map-action-btn { 
+#sillypoker-panel .map-action-btn { 
     background: #4f46e5; 
     color: white; 
     border: none; 
@@ -115,17 +129,17 @@
     cursor: pointer; 
     font-size: 13px; 
 }
-.map-action-btn:hover { 
+#sillypoker-panel .map-action-btn:hover { 
     background: #4338ca; 
 }
 
-.map-zoom-controls {
+#sillypoker-panel .map-zoom-controls {
     display: flex;
     gap: 4px;
     margin-left: 10px;
 }
 
-.map-zoom-btn {
+#sillypoker-panel .map-zoom-btn {
     background: #374151;
     border: 1px solid #4b5563;
     color: var(--text-light);
@@ -138,49 +152,49 @@
     align-items: center;
     justify-content: center;
 }
-.map-zoom-btn:hover {
+#sillypoker-panel .map-zoom-btn:hover {
     background: #4b5563;
 }
 
 
-.map-pan-zoom-container {
+#sillypoker-panel .map-pan-zoom-container {
     flex-grow: 1;
     overflow: hidden;
     cursor: grab;
     position: relative;
 }
-.map-pan-zoom-container:active {
+#sillypoker-panel .map-pan-zoom-container:active {
     cursor: grabbing;
 }
-.map-canvas {
+#sillypoker-panel .map-canvas {
     position: relative;
     width: 600px;
     height: 800px;
     transform-origin: 0 0;
 }
-.map-svg {
+#sillypoker-panel .map-svg {
     position: absolute;
     top: 0;
     left: 0;
     pointer-events: none; /* Paths should not block interaction */
 }
-.map-nodes-container {
+#sillypoker-panel .map-nodes-container {
     position: absolute;
     top: 0;
     left: 0;
     width: 600px;
     height: 800px;
 }
-.map-path { 
+#sillypoker-panel .map-path { 
     stroke: var(--path-color); 
     stroke-width: 3; 
     transition: stroke 0.3s ease; 
 }
-.map-path.traveled {
+#sillypoker-panel .map-path.traveled {
     stroke: var(--node-glow-current);
     stroke-width: 4;
 }
-.map-node {
+#sillypoker-panel .map-node {
     position: absolute;
     transform: translate(-50%, -50%); /* Center the node on its coordinates */
     transition: transform 0.2s ease-out, opacity 0.3s ease;
@@ -188,38 +202,38 @@
     align-items: center;
     justify-content: center;
 }
-.map-node:not(.unreachable):not(.visited):hover > .node-bg { 
+#sillypoker-panel .map-node:not(.unreachable):not(.visited):hover > .node-bg { 
     transform: scale(1.2); 
 }
-.map-node.reachable { 
+#sillypoker-panel .map-node.reachable { 
     cursor: pointer; 
 }
-.map-node.reachable > .node-bg { 
+#sillypoker-panel .map-node.reachable > .node-bg { 
     filter: drop-shadow(0 0 8px var(--node-glow)); 
 }
-.map-node.selected > .node-bg {
+#sillypoker-panel .map-node.selected > .node-bg {
     stroke: var(--node-glow-selected);
     filter: drop-shadow(0 0 12px var(--node-glow-selected));
     transform: scale(1.1);
 }
-.map-node.current-position > .node-bg { 
+#sillypoker-panel .map-node.current-position > .node-bg { 
     stroke: var(--node-glow-current); 
     filter: drop-shadow(0 0 12px var(--node-glow-current)); 
     transform: scale(1.1); 
 }
-.map-node.visited { 
+#sillypoker-panel .map-node.visited { 
     opacity: 0.5; 
 }
-.map-node.unreachable { 
+#sillypoker-panel .map-node.unreachable { 
     opacity: 0.3; 
     pointer-events: none; 
 }
-.node-bg { 
+#sillypoker-panel .node-bg { 
     stroke-width: 3; 
     transition: all 0.2s ease-out; 
     transform-origin: center;
 }
-.node-icon { 
+#sillypoker-panel .node-icon { 
     font-family: "Font Awesome 5 Free"; 
     font-weight: 900; 
     color: var(--text-light); 
@@ -229,9 +243,11 @@
 }
 
 /* Node Type Styles */
-.node-enemy .node-bg { fill: #2d3748; stroke: #4a5568; }
-.node-elite .node-bg { fill: #b7791f; stroke: #ddab4d; }
-.node-shop .node-bg { fill: #2c5282; stroke: #63b3ed; }
-.node-rest .node-bg { fill: #2f855a; stroke: #68d391; }
-.node-event .node-bg { fill: #5b21b6; stroke: #a78bfa; }
-.node-boss .node-bg { fill: #9b2c2c; stroke: #f56565; }
+#sillypoker-panel .node-enemy .node-bg { fill: #2d3748; stroke: #4a5568; }
+#sillypoker-panel .node-elite .node-bg { fill: #b7791f; stroke: #ddab4d; }
+#sillypoker-panel .node-shop .node-bg { fill: #2c5282; stroke: #63b3ed; }
+#sillypoker-panel .node-rest .node-bg { fill: #2f855a; stroke: #68d391; }
+#sillypoker-panel .node-event .node-bg { fill: #5b21b6; stroke: #a78bfa; }
+#sillypoker-panel .node-boss .node-bg { fill: #9b2c2c; stroke: #f56565; }
+#sillypoker-panel .node-treasure .node-bg { fill: #a16207; stroke: #f59e0b; } /* Gold/Yellow for treasure */
+#sillypoker-panel .node-card-sharp .node-bg { fill: #5b21b6; stroke: #c084fc; } /* Purple for card sharp */

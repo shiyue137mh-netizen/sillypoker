@@ -32,6 +32,16 @@ const DIFFICULTY_SETTINGS = {
     hell:   { health: 1, max_health: 1, chips: 100,  name: '地狱' }
 };
 
+const KEY_TO_STATE_MAP = {
+    'sp_enemy_data': 'enemyData',
+    'sp_player_cards': 'playerCards',
+    'sp_player_data': 'playerData',
+    'sp_map_data': 'mapData',
+    'sp_game_state': 'currentGameState',
+    'sp_private_data': 'privateGameData',
+};
+
+
 // This is the CORE of the bugfix for state persistence.
 async function getOrCreateGameLorebook() {
     const characterName = SillyTavern_Context_API.name2;
@@ -110,8 +120,10 @@ async function fetchAllGameData() {
         const entries = await TavernHelper_API.getWorldbook(lorebookName);
         let runInProgress = false;
         for (const key of AIGame_Config.LOREBOOK_ENTRY_KEYS) {
+            const stateKey = KEY_TO_STATE_MAP[key];
+            if (!stateKey) continue; 
+
             const entry = entries.find(e => e.name === key);
-            const stateKey = key.replace('sp_', '').replace(/_(\w)/g, (_, p1) => p1.toUpperCase());
             if (entry && entry.content) {
                 try {
                     const data = JSON.parse(entry.content);
@@ -234,7 +246,7 @@ export const AIGame_DataHandler = {
             inventory: [],
             status_effects: []
         }));
-        await updateWorldbook('sp_map_data', () => generateMapData());
+        await updateWorldbook('sp_map_data', () => generateMapData(0));
         
         toastr_API.success(`新的挑战已开始！难度：${settings.name}`);
         AIGame_State.currentActiveTab = 'map';
@@ -246,6 +258,7 @@ export const AIGame_DataHandler = {
         AIGame_State.mapData = null;
         AIGame_State.runInProgress = false;
         AIGame_State.mapTransformInitialized = false;
+        AIGame_State.currentActiveTab = 'map';
         await updateWorldbook('sp_player_data', () => ({}));
         await updateWorldbook('sp_map_data', () => ({}));
         await updateWorldbook('sp_enemy_data', () => ({}));
@@ -254,6 +267,23 @@ export const AIGame_DataHandler = {
         await updateWorldbook('sp_private_data', () => ({}));
         
         toastr_API.info("挑战已重置。");
+        await fetchAllGameData();
+    },
+    
+    async advanceToNextFloor() {
+        const currentLayer = AIGame_State.mapData?.mapLayer ?? 0;
+        const nextLayer = currentLayer + 1;
+        Logger.log(`Advancing to next floor: ${nextLayer}`);
+
+        const newMap = generateMapData(nextLayer);
+        await updateWorldbook('sp_map_data', () => newMap);
+
+        const prompt = `(系统提示：{{user}}已前往下一层。)`;
+        await TavernHelper_API.triggerSlash(`/setinput ${JSON.stringify(prompt)}`);
+
+        toastr_API.success(`已成功前往第 ${nextLayer + 1} 层！`);
+        AIGame_State.selectedMapNodeId = null;
+        AIGame_State.mapTransformInitialized = false;
         await fetchAllGameData();
     },
     

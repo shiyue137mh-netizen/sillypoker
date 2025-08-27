@@ -5,6 +5,7 @@
 import { AIGame_Config } from '../config.js';
 import { AIGame_State } from './state.js';
 import { Logger } from './logger.js';
+import { AudioManager } from './audioManager.js';
 
 let jQuery_API, parentWin, DataHandler, UI, toastr_API, SillyTavern_Context_API;
 
@@ -36,7 +37,8 @@ export const AIGame_Events = {
     
     addGlobalEventListeners() {
         const body = jQuery_API(parentWin.document.body);
-        body.off('click.sillypoker_global').on('click.sillypoker_global', `#${AIGame_Config.TOGGLE_BUTTON_ID}`, () => {
+        body.off('click.sillypoker_global').on('click.sillypoker_global', `#${AIGame_Config.TOGGLE_BUTTON_ID}`, async () => {
+            await AudioManager.play('click');
             UI.togglePanel();
         });
     },
@@ -53,11 +55,14 @@ export const AIGame_Events = {
             const target = jQuery_API(e.target);
             const closest = (selector) => target.closest(selector);
             const targetId = target.attr('id');
+            let isSoundWorthy = false;
 
             if (closest('.sillypoker-close-btn').length) {
+                isSoundWorthy = true;
                 UI.togglePanel(false);
             }
             else if (closest('.sillypoker-tab').length) {
+                isSoundWorthy = true;
                 const tabId = closest('.sillypoker-tab').data('tab');
                 if (tabId !== AIGame_State.currentActiveTab) {
                     AIGame_State.currentActiveTab = tabId;
@@ -65,75 +70,75 @@ export const AIGame_Events = {
                     UI.renderPanelContent();
                 }
             }
-            else if (closest('.save-map-btn').length) {
-                DataHandler.saveMapData();
+            else if (closest('.save-map-btn').length || closest('.reroll-map-btn').length || closest('.next-floor-btn').length) {
+                isSoundWorthy = true;
+                if (closest('.save-map-btn').length) DataHandler.saveMapData();
+                if (closest('.reroll-map-btn').length) {
+                    AIGame_State.mapData = null;
+                    AIGame_State.selectedMapNodeId = null;
+                    AIGame_State.mapTransformInitialized = false;
+                    UI.renderActiveTabContent();
+                }
+                if (closest('.next-floor-btn').length) DataHandler.advanceToNextFloor();
             }
-            else if (closest('.reroll-map-btn').length) {
-                AIGame_State.mapData = null;
-                AIGame_State.selectedMapNodeId = null;
-                AIGame_State.mapTransformInitialized = false; // Reset transform for new map
-                UI.renderActiveTabContent();
-            }
-            else if (targetId === 'sillypoker-settings-icon') {
-                 AIGame_State.currentActiveTab = 'settings';
-                 UI.renderPanelContent();
-            }
-            else if (targetId === 'sillypoker-escape-btn') {
-                 if (!AIGame_State.runInProgress) {
-                    toastr_API.warning("你必须在一次挑战中才能尝试逃跑。");
-                    return;
-                 }
-                 const confirmResult = await SillyTavern_Context_API.callGenericPopup(
-                    `你确定要尝试逃跑吗？这可能会导致你失去生命值。`,
-                    SillyTavern_Context_API.POPUP_TYPE.CONFIRM
-                 );
-                 if (confirmResult) {
-                    DataHandler.attemptEscape();
-                 }
+            else if (targetId === 'sillypoker-settings-icon' || targetId === 'sillypoker-escape-btn') {
+                isSoundWorthy = true;
+                if (targetId === 'sillypoker-settings-icon') {
+                    AIGame_State.currentActiveTab = 'settings';
+                    UI.renderPanelContent();
+                }
+                if (targetId === 'sillypoker-escape-btn') {
+                    if (!AIGame_State.runInProgress) {
+                        toastr_API.warning("你必须在一次挑战中才能尝试逃跑。");
+                        return;
+                    }
+                    const confirmResult = await SillyTavern_Context_API.callGenericPopup(`你确定要尝试逃跑吗？这可能会导致你失去生命值。`, SillyTavern_Context_API.POPUP_TYPE.CONFIRM);
+                    if (confirmResult) DataHandler.attemptEscape();
+                }
             }
             else if (closest('.difficulty-option-btn').length) {
+                isSoundWorthy = true;
                 const difficulty = closest('.difficulty-option-btn').data('difficulty');
                 DataHandler.startNewRun(difficulty);
             }
             else if (closest('.restart-challenge-btn').length) {
-                 const confirmResult = await SillyTavern_Context_API.callGenericPopup(
-                    `你确定要放弃当前的挑战吗？所有进度都将丢失。`,
-                    SillyTavern_Context_API.POPUP_TYPE.CONFIRM
-                 );
-                 if (confirmResult) {
-                    DataHandler.resetAllGameData();
-                 }
+                isSoundWorthy = true;
+                 const confirmResult = await SillyTavern_Context_API.callGenericPopup(`你确定要放弃当前的挑战吗？所有进度都将丢失。`, SillyTavern_Context_API.POPUP_TYPE.CONFIRM);
+                 if (confirmResult) DataHandler.resetAllGameData();
             }
             else if (closest('.sillypoker-create-book-btn').length) {
+                isSoundWorthy = true;
                 DataHandler.createGameBookEntries();
             }
-            else if (targetId === 'map-zoom-in') {
-                UI.zoomMapByStep('in');
-            }
-            else if (targetId === 'map-zoom-out') {
-                UI.zoomMapByStep('out');
+            else if (targetId === 'map-zoom-in' || targetId === 'map-zoom-out') {
+                isSoundWorthy = true;
+                UI.zoomMapByStep(targetId === 'map-zoom-in' ? 'in' : 'out');
             }
             else if (closest('.inventory-toggle-btn').length) {
+                isSoundWorthy = true;
                 AIGame_State.isInventoryVisible = !AIGame_State.isInventoryVisible;
                 jQuery_API(parentWin.document.body).find('.game-table-container').toggleClass('inventory-visible', AIGame_State.isInventoryVisible);
                 const icon = panel.find('.inventory-toggle-btn i');
                 icon.toggleClass('fa-chevron-left fa-chevron-right');
             }
             else if (closest('.inventory-item:not(.empty)').length) {
+                isSoundWorthy = true;
                 const itemIndex = closest('.inventory-item').data('index');
                 DataHandler.useItem(itemIndex);
             }
             else if (closest('#sillypoker-commit-btn').length) {
+                isSoundWorthy = true;
                 await DataHandler.commitStagedActions();
             }
             else if (closest('.action-buttons button').length) {
+                isSoundWorthy = true;
                 const actionButton = closest('.action-buttons button');
                 const actionType = actionButton.data('action');
                 let action = { type: actionType };
 
                 const selectedCards = [];
                 if (actionType === 'fold' || actionType === 'play_cards') {
-                     panel.find('.player-area .hand .card.selected').each(function() {
+                     panel.find('.player-position-container .hand .card.selected').each(function() {
                         const suit = jQuery_API(this).data('suit');
                         const rank = jQuery_API(this).find('.card-rank').text();
                         selectedCards.push({ suit, rank });
@@ -163,15 +168,16 @@ export const AIGame_Events = {
                         action.text = String(customActionText).trim();
                         DataHandler.stagePlayerAction(action);
                     }
-                    return; // a separate path, don't fall through
+                    return;
                 }
                 
                 DataHandler.stagePlayerAction(action);
             }
-            else if (closest('.player-area .hand .card').length) {
-                closest('.player-area .hand .card').toggleClass('selected');
+            else if (closest('.player-position-container .hand .card').length) {
+                closest('.player-position-container .hand .card').toggleClass('selected');
             }
             else if (closest('.rules-list-item').length) {
+                isSoundWorthy = true;
                 const ruleId = closest('.rules-list-item').data('rule-id');
                 const contentPanel = panel.find('.rules-content-display');
                 const ruleItems = panel.find('.rules-list-item');
@@ -197,6 +203,8 @@ export const AIGame_Events = {
                     Logger.error(`加载规则文件失败: ${ruleId}.md`, err);
                 }
             }
+
+            if(isSoundWorthy) await AudioManager.play('click');
         });
         
     },
@@ -222,8 +230,9 @@ export const AIGame_Events = {
             jQuery_API(this).css('cursor', 'grabbing');
         });
 
-        panZoomContainer.on('click.sillypoker_map_interaction', '.map-node.reachable', function(e) {
+        panZoomContainer.on('click.sillypoker_map_interaction', '.map-node.reachable', async function(e) {
              e.stopPropagation();
+             await AudioManager.play('click');
              const node = jQuery_API(this);
              const nodeId = node.data('node-id');
 
@@ -242,8 +251,9 @@ export const AIGame_Events = {
         });
         
         // This targets the travel button inside the details panel
-        mapContent.closest('.map-view-wrapper').find('.map-details-panel').on('click.sillypoker_map_interaction', '.map-travel-btn', function(e){
+        mapContent.closest('.map-view-wrapper').find('.map-details-panel').on('click.sillypoker_map_interaction', '.map-travel-btn', async function(e){
             e.stopPropagation();
+            await AudioManager.play('click');
             if (AIGame_State.selectedMapNodeId) {
                 const nodeElement = container.find(`.map-node[data-node-id="${AIGame_State.selectedMapNodeId}"]`);
                 if (nodeElement.length) {

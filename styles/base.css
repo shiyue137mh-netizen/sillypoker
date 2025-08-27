@@ -56,7 +56,7 @@
 #sillypoker-panel.hidden {
     display: none;
 }
-.sillypoker-header {
+#sillypoker-panel .sillypoker-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -68,19 +68,19 @@
     user-select: none;
     cursor: move;
 }
-.header-left-icons, .header-right-icons {
+#sillypoker-panel .header-left-icons, #sillypoker-panel .header-right-icons {
     display: flex;
     align-items: center;
     gap: 12px;
 }
-.header-left-icons {
+#sillypoker-panel .header-left-icons {
     gap: 16px; /* Increased gap for HUD */
 }
-.header-right-icons {
+#sillypoker-panel .header-right-icons {
     cursor: default;
 }
 
-.sillypoker-header-btn {
+#sillypoker-panel .sillypoker-header-btn {
     background: none;
     border: none;
     color: var(--text-light);
@@ -95,16 +95,16 @@
     justify-content: center;
     transition: background-color 0.2s ease;
 }
-.sillypoker-header-btn:hover {
+#sillypoker-panel .sillypoker-header-btn:hover {
     background-color: rgba(255,255,255,0.1);
 }
-.sillypoker-close-btn {
+#sillypoker-panel .sillypoker-close-btn {
     font-size: 24px;
     font-weight: bold;
     line-height: 1;
 }
 
-.status-indicator {
+#sillypoker-panel .status-indicator {
     width: 12px;
     height: 12px;
     border-radius: 50%;
@@ -112,23 +112,23 @@
     border: 1px solid #7f1d1d;
     transition: all 0.3s ease;
 }
-.status-indicator.active {
+#sillypoker-panel .status-indicator.active {
     background: #4ade80;
     border: 1px solid #166534;
     box-shadow: 0 0 5px #4ade80;
 }
-.sillypoker-content {
+#sillypoker-panel .sillypoker-content {
     flex-grow: 1;
     position: relative;
     display: flex; /* Ensure content can be centered */
     background: var(--content-bg);
     min-height: 0; /* Fix for flexbox children overflow */
 }
-.sillypoker-content-centerer {
+#sillypoker-panel .sillypoker-content-centerer {
     margin: auto;
     text-align: center;
 }
-.sillypoker-create-book-btn {
+#sillypoker-panel .sillypoker-create-book-btn {
     background: var(--button-primary);
     color: white;
     border: none;
@@ -138,17 +138,17 @@
     margin-top: 15px;
     transition: background-color 0.2s;
 }
-.sillypoker-create-book-btn:hover {
+#sillypoker-panel .sillypoker-create-book-btn:hover {
     background: var(--button-primary-hover);
 }
 
-.sillypoker-tabs {
+#sillypoker-panel .sillypoker-tabs {
     display: flex;
     background: var(--header-bg);
     border-bottom: 1px solid var(--border-color);
     flex-shrink: 0;
 }
-.sillypoker-tab {
+#sillypoker-panel .sillypoker-tab {
     padding: 10px 20px;
     background: none;
     border: none;
@@ -158,14 +158,14 @@
     position: relative;
     transition: color 0.2s;
 }
-.sillypoker-tab:hover {
+#sillypoker-panel .sillypoker-tab:hover {
     color: var(--text-light);
 }
-.sillypoker-tab.active {
+#sillypoker-panel .sillypoker-tab.active {
     color: var(--text-light);
     font-weight: 500;
 }
-.sillypoker-tab.active::after {
+#sillypoker-panel .sillypoker-tab.active::after {
     content: '';
     position: absolute;
     bottom: -1px;
@@ -174,13 +174,13 @@
     height: 2px;
     background-color: var(--button-primary);
 }
-.sillypoker-tab-content-wrapper {
+#sillypoker-panel .sillypoker-tab-content-wrapper {
     flex-grow: 1;
     position: relative; /* For positioning tab content */
     display: flex; /* Make it a flex container */
     flex-direction: column; /* Stack children vertically */
 }
-.sillypoker-tab-content {
+#sillypoker-panel .sillypoker-tab-content {
     position: absolute;
     top: 0;
     left: 0;
@@ -192,13 +192,13 @@
     display: flex; /* Children will be managed by flex */
     flex-direction: column;
 }
-.sillypoker-tab-content.active {
+#sillypoker-panel .sillypoker-tab-content.active {
     opacity: 1;
     visibility: visible;
     position: static; /* Let it participate in the flex flow */
     flex-grow: 1;
 }
-.sillypoker-commit-btn {
+#sillypoker-panel .sillypoker-commit-btn {
     position: absolute;
     bottom: 20px;
     left: 50%;
@@ -218,14 +218,14 @@
     justify-content: center;
     z-index: 100;
 }
-.sillypoker-commit-btn.hidden {
+#sillypoker-panel .sillypoker-commit-btn.hidden {
     display: none;
 }
-.sillypoker-commit-btn:hover {
+#sillypoker-panel .sillypoker-commit-btn:hover {
     transform: translateX(-50%) scale(1.1);
     background: var(--button-primary-hover);
 }
-.sillypoker-commit-btn::after {
+#sillypoker-panel .sillypoker-commit-btn::after {
     content: attr(data-count);
     position: absolute;
     top: -5px;
@@ -244,7 +244,7 @@
 }
 
 /* Difficulty Selection Styles */
-.difficulty-selection-container {
+#sillypoker-panel .difficulty-selection-container {
     padding: 30px;
     display: flex;
     flex-direction: column;
@@ -254,20 +254,20 @@
     text-align: center;
 }
 
-.difficulty-title {
+#sillypoker-panel .difficulty-title {
     font-family: 'Playfair Display', serif;
     font-size: 2.5rem;
     color: var(--gold-accent);
     margin-bottom: 10px;
 }
 
-.difficulty-subtitle {
+#sillypoker-panel .difficulty-subtitle {
     font-size: 1rem;
     color: #9ca3af;
     margin-bottom: 30px;
 }
 
-.difficulty-options-grid {
+#sillypoker-panel .difficulty-options-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
     gap: 20px;
@@ -275,7 +275,7 @@
     max-width: 600px;
 }
 
-.difficulty-option-btn {
+#sillypoker-panel .difficulty-option-btn {
     background: #2b384b;
     border: 2px solid var(--border-color);
     border-radius: 8px;
@@ -286,19 +286,19 @@
     color: var(--text-light);
 }
 
-.difficulty-option-btn:hover {
+#sillypoker-panel .difficulty-option-btn:hover {
     transform: translateY(-5px);
     border-color: var(--gold-accent);
     box-shadow: 0 5px 15px rgba(0,0,0,0.3);
 }
 
-.difficulty-option-btn h4 {
+#sillypoker-panel .difficulty-option-btn h4 {
     margin: 0 0 10px 0;
     font-size: 1.2rem;
     font-weight: 500;
 }
 
-.difficulty-option-details {
+#sillypoker-panel .difficulty-option-details {
     font-size: 0.9rem;
     color: #9ca3af;
     display: flex;
@@ -307,7 +307,7 @@
 }
 
 /* Settings Page Styles */
-.settings-view-container {
+#sillypoker-panel .settings-view-container {
     width: 100%;
     padding: 30px;
     display: flex;
@@ -316,7 +316,7 @@
     box-sizing: border-box;
 }
 
-.settings-title {
+#sillypoker-panel .settings-title {
     font-family: 'Playfair Display', serif;
     font-size: 2.5rem;
     color: var(--gold-accent);
@@ -324,13 +324,13 @@
     text-align: center;
 }
 
-.settings-options-list {
+#sillypoker-panel .settings-options-list {
     display: flex;
     flex-direction: column;
     gap: 15px;
 }
 
-.settings-option {
+#sillypoker-panel .settings-option {
     background: #2b384b;
     border: 1px solid var(--border-color);
     border-radius: 8px;
@@ -340,20 +340,20 @@
     align-items: center;
 }
 
-.settings-option-text h4 {
+#sillypoker-panel .settings-option-text h4 {
     margin: 0 0 5px 0;
     font-size: 1.1rem;
     font-weight: 500;
 }
 
-.settings-option-text p {
+#sillypoker-panel .settings-option-text p {
     margin: 0;
     font-size: 0.9rem;
     color: #9ca3af;
     max-width: 400px;
 }
 
-.sillypoker-btn-danger {
+#sillypoker-panel .sillypoker-btn-danger {
     background: #dc2626;
     color: white;
     border: none;
@@ -364,6 +364,6 @@
     font-weight: 500;
 }
 
-.sillypoker-btn-danger:hover:not(:disabled) {
+#sillypoker-panel .sillypoker-btn-danger:hover:not(:disabled) {
     background: #b91c1c;
 }

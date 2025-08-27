@@ -28,7 +28,7 @@
     [Game:End, data:{"result":"win", "reason":"你破解了对手的策略。"}]
     [Event:Modify, data:{"target":"{{user}}", "modifications":[
         {"field":"chips", "operation":"add", "value":600},
-        {"field":"inventory", "operation":"add", "value":{"name":"老千的袖箭", "description":"主动使用：在本回合中，你可以指定一张公共牌将其作废。", "type":"active"}}
+        {"field":"inventory", "operation":"add", "value":{"icon":"🎲", "name":"老千的袖箭", "description":"主动使用：在本回合中，你可以指定一张公共牌将其作废。", "type":"active"}}
     ]}]
 
 ---
@@ -53,7 +53,7 @@
     [Event:Modify, data:{"target":"{{user}}", "modifications":[
         {"field":"max_health", "operation":"add", "value":1},
         {"field":"health", "operation":"add", "value":1},
-        {"field":"status_effects", "operation":"add", "value":{"name":"恶心", "description":"在接下来的3场战斗中，初始筹码减少100。", "duration":3}}
+        {"field":"status_effects", "operation":"add", "value":{"icon":"🤢", "name":"恶心", "description":"在接下来的3场战斗中，初始筹码减少100。", "duration":3}}
     ]}]
 
 ---
@@ -66,10 +66,36 @@
     > 一夜好眠，你感觉精力充沛。
     
     [Event:Modify, data:{"target":"{{user}}", "modifications":[ {"field":"health", "operation":"add", "value":1} ]}]
+---
+
+## 5. 宝箱 (Treasure) 💎
+
+-   **描述**: 无需战斗，直接获得奖励。
+-   **核心行为**: 当玩家移动到此节点时，你应立即使用 `[Event:Modify]` 给予奖励，奖励可以是筹码、道具或两者皆有。
+-   **指令范例**:
+    > 你打开了宝箱，里面金光闪闪。
+    
+    [Event:Modify, data:{"target":"{{user}}", "modifications":[
+        {"field":"chips", "operation":"add", "value":200},
+        {"field":"inventory", "operation":"add", "value":{"icon":"🍀", "name":"四叶草", "description":"被动：小幅提高你获得好牌的几率。", "type":"passive"}}
+    ]}]
 
 ---
 
-## 5. 商店 (Shop)
+## 6. 千术师的牌桌 (Card Sharp's Table) ✨
+
+-   **描述**: 一个学习“千术”来升级卡牌的机会。
+-   **核心行为**:
+    1.  向玩家提供一个或多个升级选项。
+    2.  当玩家做出选择后，使用 `[Game:Function, type:ModifyCard]` 指令来永久修改玩家牌库中的一张牌。**这是一个虚构的概念，因为我们没有牌库，但你可以用它来修改玩家的下一张手牌或赋予一个持续的效果。**
+-   **指令范例**:
+    > （玩家选择将一张牌的点数+1）
+    
+    千术师对你耳语了几句，你感觉自己对牌的掌控力更强了。
+    [Game:Function, type:ModifyCard, data:{"targets":[{"location":"player_hand", "card_filter":{"index":"random"}, "modifications":[{"field":"rank", "operation":"add", "value":1}]}]}]
+
+---
+## 7. 商店 (Shop)
 
 -   **描述**: 玩家使用筹码购买道具的地方。
 -   **核心行为**: 当玩家确认购买某件商品时，你需要同时**扣除玩家的筹码**并**给予玩家道具**。
@@ -79,12 +105,12 @@
     “明智的选择。”店主说道。
     [Event:Modify, data:{"target":"{{user}}", "modifications":[
         {"field":"chips", "operation":"add", "value":-300},
-        {"field":"inventory", "operation":"add", "value":{"name":"幸运硬币", "description":"每场牌局开始时，有15%的几率额外抽取一张牌。", "type":"passive"}}
+        {"field":"inventory", "operation":"add", "value":{"icon":"🪙", "name":"幸运硬币", "description":"每场牌局开始时，有15%的几率额外抽取一张牌。", "type":"passive"}}
     ]}]
 
 ---
 
-## 6. 首领 (Boss)
+## 8. 首领 (Boss)
 
 -   **描述**: 每一层的最终挑战。
 -   **核心奖励**: 战胜首领后，应获得**大量筹码**和一件**非常稀有的道具**。
@@ -95,5 +121,5 @@
     [Game:End, data:{"result":"win", "reason":"你战胜了本层的首领。"}]
     [Event:Modify, data:{"target":"{{user}}", "modifications":[
         {"field":"chips", "operation":"add", "value":2000},
-        {"field":"inventory", "operation":"add", "value":{"name":"赌场的契约", "description":"被动：你每拥有一件道具，最大生命值便+1。", "type":"passive", "rarity":"legendary"}}
+        {"field":"inventory", "operation":"add", "value":{"icon":"📜", "name":"赌场的契约", "description":"被动：你每拥有一件道具，最大生命值便+1。", "type":"passive", "rarity":"legendary"}}
     ]}]

@@ -1,4 +1,5 @@
 
+
 /**
  * AI Card Table Extension for SillyTavern - Main Entry Point
  * @version 8.3.0
@@ -11,6 +12,7 @@ import { AIGame_DataHandler } from './modules/dataHandler.js';
 import { AIGame_State } from './modules/state.js';
 import { AIGame_Events } from './modules/events.js';
 import { Logger } from './modules/logger.js';
+import { AudioManager } from './modules/audioManager.js';
 
 // --- Top-level module scope variables ---
 const parentWin = window.parent;
@@ -65,6 +67,7 @@ async function mainInitialize() {
     Logger.log('正在初始化 AI 卡牌桌面...');
 
     AIGame_State.init(parentWin);
+    AudioManager.init(dependencies); // Initialize AudioManager
     AIGame_DataHandler.init(dependencies, AIGame_UI);
     AIGame_UI.init(dependencies, AIGame_DataHandler);
     AIGame_Events.init(dependencies, AIGame_DataHandler, AIGame_UI);

@@ -13,29 +13,37 @@
     --revealed-glow-color: #4ade80; /* Bright Green */
 }
 
-.game-table-container {
+@keyframes card-entry-animation {
+    from {
+        transform: translateY(30px) scale(0.9);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
+}
+
+
+#sillypoker-panel .game-table-container {
     width: 100%;
     height: 100%;
     position: relative;
     overflow: hidden;
 }
 
-.game-table {
+#sillypoker-panel .game-table {
     width: 100%;
     height: 100%;
     background: var(--table-bg);
     border: 20px solid var(--table-border);
     border-radius: 150px;
     box-shadow: inset 0 0 25px rgba(0,0,0,0.5), 0 10px 30px rgba(0,0,0,0.5);
-    display: flex;
-    flex-direction: column;
-    justify-content: space-around; /* Changed for better spacing */
-    align-items: center;
-    padding: 20px 40px; /* Reduced vertical padding */
+    padding: 20px 40px;
     box-sizing: border-box;
     position: relative;
 }
-.felt-surface { 
+#sillypoker-panel .felt-surface { 
     position: absolute; 
     top: 20px; 
     left: 20px; 
@@ -45,86 +53,110 @@
     border-radius: 130px; 
     box-shadow: inset 0 0 15px rgba(0,0,0,0.4); 
 }
-.game-area { 
-    z-index: 1; 
-    width: 100%; 
-    display: flex; 
-    justify-content: center; 
-    align-items: center; 
-    flex-wrap: wrap; 
-    gap: 15px; /* Reduced gap */
-}
 
-.player-area {
+/* --- New Positional Layout System --- */
+
+#sillypoker-panel .board-area-container {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 2;
     display: flex;
-    justify-content: center; /* Center the hand/actions part */
-    align-items: flex-end;
-    width: 100%;
-    position: relative; /* Context for inventory */
-    flex-shrink: 0;
+    flex-direction: row; /* MODIFIED: Place pot and cards side-by-side */
+    align-items: center; /* Vertically align them */
+    justify-content: center; /* Center the pot+cards group */
+    gap: 25px; /* Increased gap */
+    width: 80%;
 }
 
-.player-hand-actions {
+#sillypoker-panel .player-position-container {
+    position: absolute;
+    padding: 5px;
+    border-radius: 12px;
+    transition: filter 0.3s ease-in-out;
+    display: flex; /* Make container flexible */
+    justify-content: center;
+    align-items: center;
+}
+#sillypoker-panel .player-position-container.active-turn {
+    filter: drop-shadow(0 0 10px rgba(249, 168, 37, 0.7));
+    z-index: 5;
+}
+
+#sillypoker-panel .position-bottom {
+    bottom: 5px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+}
+#sillypoker-panel .opponent-area-container.position-top {
+    top: 5px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 40px;
+    width: 100%;
+    justify-content: center;
+}
+#sillypoker-panel .position-top-center {
+    top: 5px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+#sillypoker-panel .position-left {
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+#sillypoker-panel .position-right {
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+#sillypoker-panel .position-left .opponent-container,
+#sillypoker-panel .position-right .opponent-container {
+    transform: scale(0.85);
+    transform-origin: top center;
+}
+
+
+#sillypoker-panel .player-hand-actions {
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 15px;
-    transition: box-shadow 0.5s ease-in-out, transform 0.3s ease;
-    border-radius: 12px;
-    padding: 5px;
 }
 
-.opponent-area {
-    display: flex;
-    justify-content: center;
-    gap: 20px;
-    align-items: flex-start;
-    width: 100%;
-    min-height: 140px;
-    flex-shrink: 0;
-}
-
-.opponent-container {
+#sillypoker-panel .opponent-container {
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 5px;
-    padding: 5px;
-    border-radius: 8px;
-    transition: box-shadow 0.5s ease-in-out, transform 0.3s ease;
 }
 
-.opponent-container.active-turn {
-    box-shadow: 0 0 20px 5px rgba(249, 168, 37, 0.55);
-    transform: scale(1.03);
-}
-
-.opponent-info {
+#sillypoker-panel .opponent-info {
     text-align: center;
     color: var(--text-light);
+    position: relative;
+    z-index: 20; /* FIX: Ensure name is always above cards */
 }
 
-.player-area.active-turn .player-hand-actions {
-    box-shadow: 0 0 20px 5px rgba(249, 168, 37, 0.55);
-    transform: scale(1.03);
-}
-
-.opponent-name { 
+#sillypoker-panel .opponent-name { 
     font-family: 'Playfair Display', serif; 
-    font-size: 1.2rem; /* Slightly smaller for multiple opponents */
+    font-size: 1.2rem;
 }
-.opponent-style { 
+#sillypoker-panel .opponent-style { 
     font-style: italic; 
     font-size: 0.8rem;
     opacity: 0.8; 
 }
-
-.action-buttons {
+#sillypoker-panel .action-buttons {
     display: flex;
     gap: 10px;
 }
-
-.action-buttons button { 
+#sillypoker-panel .action-buttons button { 
     background: linear-gradient(145deg, #ffb74d, #f9a825);
     color: var(--text-dark); 
     border: none;
@@ -137,151 +169,191 @@
     box-shadow: 0 2px 5px rgba(0,0,0,0.2), inset 0 -2px 1px rgba(0,0,0,0.1);
     text-shadow: 0 1px 0 rgba(255,255,255,0.3);
 }
-.action-buttons button:hover:not(:disabled) { 
+#sillypoker-panel .action-buttons button:hover:not(:disabled) { 
     transform: translateY(-2px); 
     box-shadow: 0 4px 8px rgba(0,0,0,0.3), inset 0 -2px 1px rgba(0,0,0,0.1);
 }
-.action-buttons button:active:not(:disabled) {
+#sillypoker-panel .action-buttons button:active:not(:disabled) {
     transform: translateY(1px);
     box-shadow: 0 1px 3px rgba(0,0,0,0.2), inset 0 -1px 0 rgba(0,0,0,0.1);
 }
-.action-buttons button:disabled {
+#sillypoker-panel .action-buttons button:disabled {
     background: #9e9e9e;
     cursor: not-allowed;
     transform: none;
     box-shadow: 0 2px 5px rgba(0,0,0,0.2);
     opacity: 0.6;
 }
-.hand { 
+#sillypoker-panel .hand { 
     display: flex; 
-    gap: -45px; /* Overlap player cards */
-    padding-left: 45px; /* Offset for card overlap */
+    justify-content: center;
 }
 
-.opponent-hand {
-    gap: -65px; /* Tighter overlap for many cards */
-    padding-left: 65px;
-    transform: scale(0.85); /* Make opponent cards smaller */
+/* Card density adjustments - Using less dense values with the working animation logic */
+#sillypoker-panel .horizontal-hand {
+    flex-direction: row;
+    padding-left: 40px; /* Add padding to compensate for negative margin */
+}
+#sillypoker-panel .horizontal-hand > .card {
+    margin-left: -40px; /* Less overlap */
+}
+#sillypoker-panel .opponent-container .horizontal-hand {
+     padding-left: 55px;
+}
+#sillypoker-panel .opponent-container .horizontal-hand > .card {
+    margin-left: -55px; /* Less overlap for opponents */
 }
 
-/* Disable hover effects on opponent cards to prevent UI clutter */
-.opponent-hand:hover > .card,
-.opponent-hand > .card:hover ~ .card,
-.opponent-hand:hover > .card:hover {
-    transform: none;
+#sillypoker-panel .vertical-hand {
+    flex-direction: column;
+    width: 100px;
+    align-items: center;
+    padding-top: 80px; /* Add padding to compensate */
+}
+#sillypoker-panel .vertical-hand > .card {
+    margin-top: -80px; /* Less overlap */
 }
 
-.card { 
-    width: 80px;  /* Reduced size */
-    height: 112px; /* Reduced size */
+/* Working animation logic from user's example */
+#sillypoker-panel .player-position-container .card { 
+    transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+    cursor: pointer;
+}
+#sillypoker-panel .player-position-container .card:hover { 
+    transform: translateY(-15px) scale(1.05); 
+    z-index: 10;
+}
+
+#sillypoker-panel .card { 
+    width: 80px;
+    height: 112px;
     background: var(--card-bg); 
     border: 1px solid var(--card-border); 
-    border-radius: 6px; /* Adjusted border-radius */
+    border-radius: 6px;
     box-shadow: 0 2px 5px rgba(0,0,0,0.2); 
     position: relative; 
-    padding: 8px; /* Adjusted padding */
+    padding: 8px;
     box-sizing: border-box; 
     display: flex; 
     flex-direction: column; 
     justify-content: space-between; 
     font-family: 'Playfair Display', serif; 
-    font-size: 2rem; /* Reduced font-size */
+    font-size: 2rem;
     font-weight: 700; 
-    transition: all 0.3s ease; 
     user-select: none; 
+    opacity: 0;
+    animation: card-entry-animation 0.5s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+    animation-delay: var(--animation-delay, 0s);
 }
-.player-area .card {
-    cursor: pointer;
-}
-.hand > .card { 
-    transition: transform 0.3s ease; 
-}
-.hand:hover > .card { 
-    transform: translateY(-15px); 
-}
-.hand > .card:hover ~ .card { 
-    transform: translateX(45px); /* Adjusted for overlap */
-}
-.hand:hover > .card:hover { 
-    transform: translateY(-25px) scale(1.05); 
-    z-index: 10; 
-}
-.player-area .hand .card.selected {
-    transform: translateY(-20px) scale(1.05);
+
+/* Enhanced .selected style for clear visual feedback from user's example */
+#sillypoker-panel .card.selected {
     box-shadow: 0 0 15px var(--gold-accent), 0 5px 15px rgba(0,0,0,0.4);
     border-color: var(--gold-accent);
+    transform: translateY(-25px) scale(1.08) !important; /* Use !important to override hover */
+    z-index: 15;
 }
-.hand:hover > .card.selected {
-    transform: translateY(-30px) scale(1.05);
+#sillypoker-panel .card.selected:hover {
+    transform: translateY(-30px) scale(1.1) !important; /* Further lift on hover */
+    z-index: 16;
 }
-.card.special { 
+
+/* STYLES FOR LARGE HANDS (e.g., Dou Dizhu) */
+#sillypoker-panel .horizontal-hand.large-hand > .card {
+    margin-left: -50px; /* More overlap for large hands, but still visible */
+}
+#sillypoker-panel .vertical-hand.large-hand > .card {
+    margin-top: -80px; /* More overlap for large hands, but still visible */
+}
+#sillypoker-panel .large-hand .card {
+    width: 70px;
+    height: 98px;
+    font-size: 1.6rem;
+}
+
+#sillypoker-panel .card.special { 
     box-shadow: var(--special-glow); 
     border: 1px solid var(--gold-accent); 
 }
-.card.card-back { 
+#sillypoker-panel .card.card-back { 
     background-image: linear-gradient(135deg, #667eea 0%, #764ba2 100%), linear-gradient(45deg, rgba(255,255,255,0.1) 25%, transparent 25%, transparent 50%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.1) 75%, transparent 75%, transparent); 
     background-size: cover, 40px 40px; 
     border: 1px solid #4a3a6b; 
 }
-.card.card-back .card-rank, .card.card-back .card-suit { 
+#sillypoker-panel .card.card-back .card-rank, #sillypoker-panel .card.card-back .card-suit { 
     display: none; 
 }
-.card-rank { 
+#sillypoker-panel .card-rank { 
     position: absolute; 
     top: 5px; 
-    left: 8px; /* Adjusted position */
+    left: 8px;
 }
-.card-suit { 
+#sillypoker-panel .card-suit { 
     position: absolute; 
     bottom: 5px; 
-    right: 8px; /* Adjusted position */
-    font-size: 1.6rem; /* Adjusted font-size */
+    right: 8px;
+    font-size: 1.6rem;
 }
-.card[data-suit="♥"], .card[data-suit="♦"] { 
+#sillypoker-panel .card[data-suit="♥"], #sillypoker-panel .card[data-suit="♦"] { 
     color: var(--red-suit); 
 }
-.card[data-suit="♠"], .card[data-suit="♣"] { 
+#sillypoker-panel .card[data-suit="♠"], #sillypoker-panel .card[data-suit="♣"] { 
     color: var(--black-suit); 
 }
-.board-area {
+#sillypoker-panel .deck-placeholder {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 80px;
+    height: 112px;
+    border: 2px dashed rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    z-index: 0;
     display: flex;
-    flex-direction: column;
-    gap: 10px;
     align-items: center;
-    flex: 1; /* Allow this area to grow and shrink */
     justify-content: center;
-    min-height: 0; /* Important for flex items */
+    color: rgba(255, 255, 255, 0.2);
+    font-size: 2rem;
+    transform: translate(-50%, -50%);
 }
-.pot { 
+#sillypoker-panel .pot { 
     text-align: center; 
     color: var(--text-light); 
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    border: 2px dashed rgba(255, 255, 255, 0.2);
+    padding: 10px 20px;
+    border-radius: 10px;
+    min-width: 120px;
 }
-.pot-amount { 
+#sillypoker-panel .pot-amount { 
     font-size: 2rem; 
     font-weight: 500; 
     color: var(--gold-accent); 
     text-shadow: 0 0 5px rgba(0,0,0,0.5); 
 }
-.community-cards {
+#sillypoker-panel .community-cards {
     display: flex;
-    gap: 8px; /* Reduced gap */
+    justify-content: flex-start; /* MODIFIED: Align cards from left (center) to right */
+    align-items: center;
+    min-height: 100px; /* Ensure space for cards */
 }
-.community-cards .card {
-    width: 70px; /* Reduced size */
-    height: 98px; /* Reduced size */
-    font-size: 1.8rem; /* Reduced font-size */
+/* FIX: Community cards now use horizontal-hand logic */
+#sillypoker-panel .community-cards .card {
+    width: 70px;
+    height: 98px;
+    font-size: 1.8rem;
 }
-.community-cards .card .card-suit {
-    font-size: 1.3rem; /* Reduced font-size */
+#sillypoker-panel .community-cards .card .card-suit {
+    font-size: 1.3rem;
 }
-
-/* New Styles for Hidden/Revealed Cards */
-.card.player-hidden {
+#sillypoker-panel .card.player-hidden {
     filter: brightness(0.7);
     position: relative;
 }
 
-.card.player-hidden::after {
+#sillypoker-panel .card.player-hidden::after {
     content: '';
     position: absolute;
     top: 0;
@@ -289,27 +361,28 @@
     right: 0;
     bottom: 0;
     background: rgba(0, 0, 0, 0.3);
-    border-radius: 6px; /* Match card border-radius */
+    border-radius: 6px;
     pointer-events: none;
 }
 
-.card.revealed {
+#sillypoker-panel .card.revealed {
     border-color: var(--revealed-glow-color);
     box-shadow: 0 0 15px rgba(74, 222, 128, 0.7), 0 5px 15px rgba(0,0,0,0.4);
 }
 
-.custom-wagers-area {
+#sillypoker-panel .custom-wagers-area {
     color: var(--text-light);
     text-align: center;
-    font-size: 0.9rem;
-    padding: 5px 0;
+    font-size: 0.8rem;
+    padding: 0;
+    line-height: 1.3;
 }
 
-.custom-wager-item {
+#sillypoker-panel .custom-wager-item {
     padding: 2px 0;
 }
 
-.custom-wager-item strong {
+#sillypoker-panel .custom-wager-item strong {
     color: var(--gold-accent);
     font-weight: 500;
 }

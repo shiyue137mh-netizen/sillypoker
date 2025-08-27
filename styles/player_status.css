@@ -6,36 +6,36 @@
     --text-light: #e0e0e0;
 }
 
-#sillypoker-global-hud-container .player-hud {
+#sillypoker-panel .player-hud {
     display: flex;
     flex-direction: row;
     align-items: center;
     gap: 12px;
 }
 
-.health-display {
+#sillypoker-panel .health-display {
     display: flex;
     gap: 2px;
 }
 
-.heart-icon {
+#sillypoker-panel .heart-icon {
     width: 20px;
     height: 20px;
 }
 
-.heart-icon.filled path {
+#sillypoker-panel .heart-icon.filled path {
     fill: var(--health-red);
     stroke: #c53030;
     stroke-width: 1;
 }
 
-.heart-icon.empty path {
+#sillypoker-panel .heart-icon.empty path {
     fill: none;
     stroke: #718096;
     stroke-width: 1.5;
 }
 
-.chips-display {
+#sillypoker-panel .chips-display {
     display: flex;
     align-items: center;
     gap: 6px;
@@ -44,12 +44,42 @@
     color: var(--gold-accent);
 }
 
-.chips-display .fa-coins {
+#sillypoker-panel .chips-display .fa-coins {
     font-size: 0.9rem;
 }
 
+/* Status Effects */
+#sillypoker-panel .status-effects-display {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding-left: 10px;
+    border-left: 1px solid var(--status-border);
+}
+
+#sillypoker-panel .status-effect-icon {
+    width: 24px;
+    height: 24px;
+    font-size: 1.2rem;
+    background: #374151;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: help;
+    transition: transform 0.2s, box-shadow 0.2s;
+    border: 1px solid #4b5563;
+}
+
+#sillypoker-panel .status-effect-icon:hover {
+    transform: scale(1.15);
+    box-shadow: 0 0 8px var(--gold-accent);
+    border-color: var(--gold-accent);
+}
+
+
 /* Interactive Inventory Panel (Part of Game Table) */
-.inventory-toggle-btn {
+#sillypoker-panel .inventory-toggle-btn {
     position: absolute;
     right: 0;
     top: 50%;
@@ -70,7 +100,7 @@
     font-size: 16px;
 }
 
-.inventory-panel {
+#sillypoker-panel .inventory-panel {
     position: absolute;
     right: 0;
     top: 50%;
@@ -86,15 +116,15 @@
     transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
-.game-table-container.inventory-visible .inventory-panel {
+#sillypoker-panel .game-table-container.inventory-visible .inventory-panel {
     transform: translate(0, -50%);
 }
 
-.game-table-container.inventory-visible .inventory-toggle-btn {
+#sillypoker-panel .game-table-container.inventory-visible .inventory-toggle-btn {
     transform: translate(-100px, -50%);
 }
 
-.inventory-item {
+#sillypoker-panel .inventory-item {
     width: 60px;
     height: 60px;
     margin: 4px auto;
@@ -110,17 +140,17 @@
     user-select: none;
 }
 
-.inventory-item:not(.empty) {
+#sillypoker-panel .inventory-item:not(.empty) {
     cursor: pointer;
 }
 
-.inventory-item:not(.empty):hover {
+#sillypoker-panel .inventory-item:not(.empty):hover {
     background: #4b5563;
     border-color: var(--gold-accent);
     transform: scale(1.1);
 }
 
-.inventory-item.empty {
+#sillypoker-panel .inventory-item.empty {
     background: rgba(17, 24, 39, 0.5);
     border-style: dashed;
 }

@@ -5,6 +5,7 @@
 import { Logger } from './logger.js';
 import { AIGame_State } from './state.js';
 import { createDeck, shuffle } from './utils.js';
+import { AudioManager } from './audioManager.js';
 
 let context; // To hold shared functions and dependencies from dataHandler
 
@@ -210,6 +211,8 @@ async function _dealCards(actions) {
     const totalCardsNeeded = actions.reduce((sum, action) => sum + (action.count || 0), 0);
     if (totalCardsNeeded === 0) return;
 
+    await AudioManager.play('deal');
+
     let drawnCards = [];
     await context.updateWorldbook('sp_private_data', (privateData) => {
         const deck = privateData.deck || [];
@@ -299,6 +302,12 @@ async function _handleGameEnd(command) {
             context.toastr_API.error("你的生命值已耗尽！挑战结束。", "游戏结束");
             AIGame_State.runInProgress = false; // Manually update state
         }
+    } else if (result === 'boss_win') {
+        context.toastr_API.success(reason, "首领已被击败！");
+        await context.updateWorldbook('sp_map_data', m => {
+            if (m) m.bossDefeated = true;
+            return m;
+        });
     } else if (result === 'escape') {
         context.toastr_API.info(reason, "逃跑成功！");
     } else {
@@ -319,6 +328,7 @@ async function _handleGameEnd(command) {
 }
 
 async function _handleActionBet(command) {
+    await AudioManager.play('chip');
     const { player_name, amount, things } = command.data;
     const userPlayerName = await context.SillyTavern_Context_API.substituteParamsExtended('{{user}}');
     
@@ -352,6 +362,7 @@ async function _handleActionBet(command) {
 }
 
 async function _handleActionCall(command) {
+    await AudioManager.play('chip');
     const { player_name } = command.data;
     const userPlayerName = await context.SillyTavern_Context_API.substituteParamsExtended('{{user}}');
     const amountToCall = AIGame_State.currentGameState.last_bet_amount || 0;

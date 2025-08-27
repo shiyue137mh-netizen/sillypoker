@@ -16,11 +16,23 @@ function getHealthHTML(health, max_health) {
     return `<div class="health-display">${hearts}</div>`;
 }
 
+function getStatusEffectsHTML(statusEffects) {
+    if (!statusEffects || statusEffects.length === 0) return '';
+    const effectsHTML = statusEffects.map(effect => {
+        const title = `${effect.name}\n\n${effect.description}\n\n剩余回合: ${effect.duration}`;
+        const icon = effect.icon || '❓';
+        return `<div class="status-effect-icon" title="${title}">${icon}</div>`;
+    }).join('');
+    return `<div class="status-effects-display">${effectsHTML}</div>`;
+}
+
+
 export function getPlayerHUDHTML(playerData) {
     if (!playerData) return '';
     const health = playerData.health ?? 0;
     const max_health = playerData.max_health ?? 0;
     const chips = playerData.chips ?? 0;
+    const statusEffects = playerData.status_effects || [];
 
     return `
         <div class="player-hud">
@@ -29,6 +41,7 @@ export function getPlayerHUDHTML(playerData) {
                 <i class="fas fa-coins"></i>
                 <span>${chips.toLocaleString()}</span>
             </div>
+            ${getStatusEffectsHTML(statusEffects)}
         </div>
     `;
 }

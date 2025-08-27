@@ -3,25 +3,47 @@
  * @description Generates a fully connected, Slay the Spire-style map.
  */
 
-const NODE_TYPES = { ENEMY: 'enemy', ELITE: 'elite', REST: 'rest', SHOP: 'shop', BOSS: 'boss', EVENT: 'event' };
+const NODE_TYPES = { 
+    ENEMY: 'enemy', 
+    ELITE: 'elite', 
+    REST: 'rest', 
+    SHOP: 'shop', 
+    BOSS: 'boss', 
+    EVENT: 'event',
+    TREASURE: 'treasure',
+    UPGRADE: 'upgrade'
+};
 
 function getNodeType(row, totalRows) {
     const random = Math.random();
-    if (random < 0.20) return NODE_TYPES.EVENT;  // 20% chance for an event
-    if (random < 0.30) return NODE_TYPES.REST;   // 10% chance for rest
-    if (random < 0.40) return NODE_TYPES.SHOP;   // 10% chance for shop
-    if (row > totalRows * 0.4 && random < 0.55) return NODE_TYPES.ELITE; // 15% chance for elite in later rows
-    return NODE_TYPES.ENEMY; // 45-60% chance for a normal enemy
+    // 55% chance for a combat node
+    if (random < 0.55) {
+        // In later rows (after 40% of the map), there's a 30% chance for an enemy to be an elite instead.
+        if (row > totalRows * 0.4 && Math.random() < 0.3) {
+            return NODE_TYPES.ELITE;
+        }
+        return NODE_TYPES.ENEMY;
+    } 
+    // 45% chance for a non-combat/event node
+    else {
+        const eventRandom = Math.random();
+        if (eventRandom < 0.30) return NODE_TYPES.EVENT;      // ~13.5% total chance
+        if (eventRandom < 0.55) return NODE_TYPES.REST;       // ~11.25% total chance
+        if (eventRandom < 0.75) return NODE_TYPES.SHOP;       // ~9% total chance
+        if (eventRandom < 0.90) return NODE_TYPES.TREASURE;   // ~6.75% total chance
+        return NODE_TYPES.UPGRADE;                            // ~4.5% total chance
+    }
 }
 
 /**
  * Generates the data structure for a procedural map, ensuring full connectivity.
+ * @param {number} layer - The current map layer index (e.g., 0 for the first floor).
  * @param {number} rowsPerLayer - The number of rows of nodes before the boss.
  * @param {number} paths - The maximum number of parallel paths.
- * @returns {{nodes: Array<object>, paths: Array<object>, player_position: string|null, path_taken: Array<string>}} The generated map data.
+ * @returns {{nodes: Array<object>, paths: Array<object>, player_position: string|null, path_taken: Array<string>, mapLayer: number, bossDefeated: boolean}} The generated map data.
  */
-export function generateMapData(rowsPerLayer = 8, paths = 5) {
-    const map = { nodes: [], paths: [], player_position: null, path_taken: [] };
+export function generateMapData(layer = 0, rowsPerLayer = 8, paths = 5) {
+    const map = { nodes: [], paths: [] };
     const layerHeight = 800;
     const rowHeight = layerHeight / (rowsPerLayer + 2); // +2 for start and boss rows
     const mapWidth = 600;
@@ -32,7 +54,7 @@ export function generateMapData(rowsPerLayer = 8, paths = 5) {
         const nodesInRow = Math.floor(Math.random() * (paths - 2)) + 3;
         for (let j = 0; j < nodesInRow; j++) {
             const node = {
-                id: `L0-R${i}-N${j}`,
+                id: `L${layer}-R${i}-N${j}`,
                 row: i,
                 x: (mapWidth / (nodesInRow + 1)) * (j + 1) + (Math.random() - 0.5) * 40,
                 y: layerHeight - (i + 1.5) * rowHeight + (Math.random() - 0.5) * 30,
@@ -47,7 +69,7 @@ export function generateMapData(rowsPerLayer = 8, paths = 5) {
 
     // 2. Generate boss node
     const bossNode = {
-        id: 'L0-BOSS',
+        id: `L${layer}-BOSS`,
         row: rowsPerLayer,
         x: mapWidth / 2,
         y: rowHeight,
@@ -97,5 +119,11 @@ export function generateMapData(rowsPerLayer = 8, paths = 5) {
     // Clean up temporary helper property
     map.nodes.forEach(node => delete node.incoming_connections);
 
-    return map;
+    return {
+        ...map,
+        player_position: null,
+        path_taken: [],
+        mapLayer: layer,
+        bossDefeated: false,
+    };
 }
