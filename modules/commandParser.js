@@ -1,3 +1,4 @@
+
 /**
  * AI Card Table Extension - Command Parser
  * @description Parses text for standardized game commands from the AI.
@@ -67,29 +68,35 @@ export const AIGame_CommandParser = {
      */
     parseSingleCommand(commandStr) {
         const trimmedStr = commandStr.trim();
-        if (!trimmedStr.startsWith('Game:') && !trimmedStr.startsWith('Action:')) {
-            // It's not a recognized command category. Silently ignore it to prevent parsing AI thoughts.
+        // V2: Added verbose logging for deep debugging
+        Logger.log('[Parser V2] Entry:', `"${trimmedStr}"`);
+
+        const validCategories = ['Game:', 'Action:', 'Event:', 'Item:'];
+        if (!validCategories.some(cat => trimmedStr.startsWith(cat))) {
+            Logger.warn('[Parser V2] FAIL: String does not start with a valid category.');
             return null;
         }
+        Logger.log('[Parser V2] OK: Category check passed.');
 
         let str = trimmedStr;
         let jsonData = {};
 
-        // Step 1: Robustly find, parse, and remove the data:{...} JSON block.
         const dataBlockStartIndex = str.indexOf('data:{');
         if (dataBlockStartIndex !== -1) {
+            Logger.log('[Parser V2] Found "data:{" block.');
             const jsonStartIndex = dataBlockStartIndex + 'data:'.length;
             
-            // Find the end of the JSON object using brace counting
             let openBraces = 0;
             let jsonEndIndex = -1;
+            let firstBraceFound = false;
             for (let i = jsonStartIndex; i < str.length; i++) {
                 if (str[i] === '{') {
+                    if (!firstBraceFound) firstBraceFound = true;
                     openBraces++;
                 } else if (str[i] === '}') {
                     openBraces--;
                 }
-                if (openBraces === 0 && openBraces >= 0) { // ensure we don't end on a mismatched brace
+                if (firstBraceFound && openBraces === 0) {
                     jsonEndIndex = i;
                     break;
                 }
@@ -97,11 +104,12 @@ export const AIGame_CommandParser = {
 
             if (jsonEndIndex !== -1) {
                 const jsonString = str.substring(jsonStartIndex, jsonEndIndex + 1);
+                Logger.log('[Parser V2] Extracted potential JSON string:', `"${jsonString}"`);
                 try {
                     jsonData = JSON.parse(jsonString);
+                    Logger.log('[Parser V2] OK: JSON parsed successfully.');
                     
                     let blockStartForRemoval = dataBlockStartIndex;
-                    // Find the preceding comma to remove it as well, avoiding stray commas.
                     for (let i = dataBlockStartIndex - 1; i >= 0; i--) {
                         const char = str[i];
                         if (char === ',') {
@@ -115,39 +123,40 @@ export const AIGame_CommandParser = {
 
                     const stringToRemove = str.substring(blockStartForRemoval, jsonEndIndex + 1);
                     str = str.replace(stringToRemove, '').trim();
+                    Logger.log('[Parser V2] String after removing data block:', `"${str}"`);
 
                 } catch (e) {
-                    Logger.error('解析指令中的JSON数据失败:', e, `JSON string was: "${jsonString}"`);
+                    Logger.error('[Parser V2] FAIL: JSON parse error.', e, `Content: "${jsonString}"`);
                     return null;
                 }
             } else {
-                 Logger.warn('指令解析失败: 未找到匹配的JSON结束括号', { original: commandStr });
+                 Logger.warn('[Parser V2] FAIL: Could not find matching closing brace for JSON object.', { original: commandStr });
                  return null;
             }
         }
 
-        // Step 2: Parse the remaining simple key-value pairs.
         const parts = str.split(',').map(p => p.trim()).filter(Boolean);
+        Logger.log('[Parser V2] Remaining parts for parsing:', parts);
         
         if (parts.length === 0) {
-            Logger.warn('指令解析失败: 只有data块，缺少Category:Type', { original: commandStr });
+            Logger.warn('[Parser V2] FAIL: No parts left after processing data block.', { original: commandStr });
             return null;
         }
 
-        const categoryTypePart = parts.shift(); // The first part should be Category:Type
+        const categoryTypePart = parts.shift();
+        Logger.log('[Parser V2] Category/Type part:', `"${categoryTypePart}"`);
         const categoryTypeMatch = categoryTypePart.match(/^([^:]+):([\s\S]+)$/);
         if (!categoryTypeMatch) {
-            Logger.warn('指令解析失败: 未找到有效的 Category:Type 结构', { original: commandStr, part: categoryTypePart });
+            Logger.warn('[Parser V2] FAIL: Could not match Category:Type format.', { part: categoryTypePart });
             return null;
         }
 
         const command = {
             category: categoryTypeMatch[1].trim(),
             type: categoryTypeMatch[2].trim(),
-            data: jsonData // Start with the parsed JSON data.
+            data: jsonData
         };
 
-        // Process remaining parts (if any) and merge into data.
         parts.forEach(part => {
             const separatorIndex = part.indexOf(':');
             if (separatorIndex > 0) {
@@ -156,7 +165,8 @@ export const AIGame_CommandParser = {
                 command.data[key] = value;
             }
         });
-
+        
+        Logger.success('[Parser V2] SUCCESS: Command fully parsed.', JSON.parse(JSON.stringify(command)));
         return command;
     }
 };

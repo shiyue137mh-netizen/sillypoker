@@ -1,3 +1,4 @@
+
 /**
  * AI Card Table Extension - UI Handler (ES6 Module)
  * @description Manages UI creation, rendering, and panel visibility.
@@ -8,6 +9,8 @@ import { AIGame_Events } from './events.js';
 import { Logger } from './logger.js';
 import { generateMapData } from './mapGenerator.js';
 import { getGameTableHTML } from './gameRenderer.js';
+import { getRulesViewHTML } from './components/RulesView.js';
+import { getPlayerHUDHTML } from './components/PlayerStatus.js';
 
 let jQuery_API, parentWin, toastr_API, DataHandler, SillyTavern_Context_API;
 
@@ -120,6 +123,13 @@ export const AIGame_UI = {
         toastr_API = deps.toastr;
         DataHandler = dataHandler;
         SillyTavern_Context_API = deps.st_context;
+
+        // Listen for log updates to refresh the UI if the log tab is active
+        SillyTavern_Context_API.eventSource.on(Logger.getUpdateEventName(), () => {
+            if (AIGame_State.isPanelVisible && AIGame_State.currentActiveTab === 'log') {
+                this.renderPanelContent();
+            }
+        });
     },
 
     async initializeUI() {
@@ -169,7 +179,7 @@ export const AIGame_UI = {
         panel.toggleClass('hidden', !shouldShow);
 
         if (shouldShow) {
-            Logger.log('面板已打开，正在检查游戏书状态...');
+            Logger.log('面板正在打开，将触发世界书状态检查...');
             DataHandler.checkGameBookExists();
         } else {
             Logger.log('面板已关闭。');
@@ -177,12 +187,15 @@ export const AIGame_UI = {
     },
 
     renderPanelContent() {
-        const contentDiv = jQuery_API(parentWin.document.body).find(`#${AIGame_Config.PANEL_ID} .sillypoker-content`);
-        const tabsContainer = jQuery_API(parentWin.document.body).find('#sillypoker-tabs-container');
-        const statusIndicator = jQuery_API(parentWin.document.body).find('#sillypoker-status-indicator');
+        const panel = jQuery_API(parentWin.document.body).find(`#${AIGame_Config.PANEL_ID}`);
+        const contentDiv = panel.find('.sillypoker-content');
+        const tabsContainer = panel.find('#sillypoker-tabs-container');
+        const statusIndicator = panel.find('#sillypoker-status-indicator');
+        const hudContainer = panel.find('#sillypoker-global-hud-container');
 
         contentDiv.empty();
         tabsContainer.empty();
+        hudContainer.empty();
 
         if (!AIGame_State.hasGameBook) {
             statusIndicator.removeClass('active');
@@ -196,6 +209,11 @@ export const AIGame_UI = {
         }
 
         statusIndicator.addClass('active');
+        
+        // Render Global HUD if a run is in progress
+        if (AIGame_State.runInProgress) {
+            hudContainer.html(getPlayerHUDHTML(AIGame_State.playerData));
+        }
 
         // Render Tabs
         let tabsHtml = '';
@@ -203,12 +221,18 @@ export const AIGame_UI = {
             tabsHtml += `<button class="sillypoker-tab ${AIGame_State.currentActiveTab === 'game-ui' ? 'active' : ''}" data-tab="game-ui">游戏界面</button>`;
             tabsHtml += `<button class="sillypoker-tab ${AIGame_State.currentActiveTab === 'map' ? 'active' : ''}" data-tab="map">地图界面</button>`;
         }
+        tabsHtml += `<button class="sillypoker-tab ${AIGame_State.currentActiveTab === 'rules' ? 'active' : ''}" data-tab="rules">游戏规则</button>`;
         tabsHtml += `<button class="sillypoker-tab ${AIGame_State.currentActiveTab === 'settings' ? 'active' : ''}" data-tab="settings">设置</button>`;
+        tabsHtml += `<button class="sillypoker-tab ${AIGame_State.currentActiveTab === 'log' ? 'active' : ''}" data-tab="log">日志</button>`;
         tabsContainer.html(`<div class="sillypoker-tabs">${tabsHtml}</div>`);
 
         // Render Content based on active tab
         if (AIGame_State.currentActiveTab === 'settings') {
             _renderSettingsView(contentDiv);
+        } else if (AIGame_State.currentActiveTab === 'rules') {
+            this._renderRulesView(contentDiv);
+        } else if (AIGame_State.currentActiveTab === 'log') {
+            this._renderLogView(contentDiv);
         } else if (AIGame_State.runInProgress) {
             contentDiv.html(`
                 <div class="sillypoker-tab-content-wrapper">
@@ -294,6 +318,11 @@ export const AIGame_UI = {
                 isSelectedNodeReachable = playerNode && playerNode.connections.includes(selectedNode.id);
             }
         }
+        
+        const mapButtonsHTML = (!mapData.is_saved) ? `
+            <button class="map-action-btn save-map-btn">保存地图</button>
+            <button class="map-action-btn reroll-map-btn">重roll地图</button>
+        ` : '';
 
         container.html(`
             <div class="map-view-wrapper">
@@ -301,8 +330,7 @@ export const AIGame_UI = {
                     <div class="map-header">
                         <h3 class="map-header-title">赌场地图</h3>
                         <div class="map-header-buttons">
-                            ${!mapData.player_position ? '<button class="map-action-btn save-map-btn">保存地图</button>' : ''}
-                            ${!mapData.player_position ? '<button class="map-action-btn reroll-map-btn">重roll地图</button>' : ''}
+                            ${mapButtonsHTML}
                             <div class="map-zoom-controls">
                                 <button class="map-zoom-btn" id="map-zoom-out" title="缩小">-</button>
                                 <button class="map-zoom-btn" id="map-zoom-in" title="放大">+</button>
@@ -355,7 +383,7 @@ export const AIGame_UI = {
 
     _renderGameView(container) {
         const { playerData, enemyData, currentGameState } = AIGame_State;
-        if (!playerData || !enemyData || Object.keys(enemyData).length === 0) {
+        if (!playerData || !enemyData || !enemyData.enemies || enemyData.enemies.length === 0) {
              container.html(`
                 <div class="sillypoker-content-centerer">
                     <p>荷官正在洗牌...</p>
@@ -366,6 +394,37 @@ export const AIGame_UI = {
         }
         container.html(getGameTableHTML(playerData, enemyData, currentGameState));
         this.updateCommitButton();
+    },
+
+    _renderRulesView(container) {
+        container.html(getRulesViewHTML());
+        // Trigger a click on the first item to load it by default
+        const firstRuleItem = container.find('.rules-list-item').first();
+        if(firstRuleItem.length) {
+            firstRuleItem.trigger('click');
+        }
+    },
+
+    _renderLogView(container) {
+        const logs = Logger.getLogs();
+        const logHtml = logs.map(log => {
+            const message = typeof log.message === 'object' ? JSON.stringify(log.message, null, 2) : log.message;
+            const argsString = log.args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : String(arg)).join(' ');
+            return `
+                <div class="log-entry">
+                    <span class="log-timestamp">${log.timestamp}</span>
+                    <span class="log-level log-level-${log.level}">${log.level}</span>
+                    <span class="log-message">${message} ${argsString}</span>
+                </div>
+            `;
+        }).join('');
+        container.html(`<div class="log-view-container">${logHtml}</div>`);
+        
+        // Auto-scroll to bottom
+        const logContainer = container.find('.log-view-container');
+        if (logContainer.length) {
+            logContainer.scrollTop(logContainer[0].scrollHeight);
+        }
     },
 
     updateCommitButton() {

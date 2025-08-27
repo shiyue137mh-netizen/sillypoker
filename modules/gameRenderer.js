@@ -2,7 +2,7 @@
  * AI Card Table Extension - Game Table Renderer (ES6 Module)
  * @description Generates the HTML string for the casino game table.
  */
-import { getPlayerHUDHTML, getPlayerInventoryHTML } from './components/PlayerStatus.js';
+import { getPlayerInventoryHTML } from './components/PlayerStatus.js';
 import { AIGame_State } from './state.js';
 import { Logger } from './logger.js';
 
@@ -44,53 +44,88 @@ function getCardHTML(card, isPlayerCard = false) {
     `;
 }
 
+function getActionButtonsHTML(gameState) {
+    const gameType = gameState?.game_type;
+
+    if (gameType === 'Blackjack') {
+        return `
+            <button data-action="hit">要牌</button>
+            <button data-action="stand">停牌</button>
+            <button data-action="custom">自定义...</button>
+        `;
+    }
+
+    // Default buttons for TexasHoldem and other games
+    return `
+        <button data-action="bet">下注</button>
+        <button data-action="check">过牌</button>
+        <button data-action="fold">弃牌</button>
+        <button data-action="play_cards">出牌</button>
+        <button data-action="custom">自定义...</button>
+    `;
+}
+
 
 /**
  * Generates the complete HTML for the poker table UI based on game state.
  * @param {object} playerData - The player's public data.
- * @param {object} enemyData - The enemy's public data.
+ * @param {object} enemyData - The enemy's public data, contains an 'enemies' array.
  * @param {object | null} gameState - The public state of the current game.
  * @returns {string} The full HTML content for the game table.
  */
 export function getGameTableHTML(playerData, enemyData, gameState) {
-    Logger.log('[AI 卡牌桌面] Rendering Game Table. Enemy Data:', JSON.parse(JSON.stringify(enemyData || {})));
+    Logger.log('Rendering Game Table with multi-opponent support.', { enemyData });
     
     const playerHand = AIGame_State.playerCards?.current_hand || [];
-    const enemyHand = enemyData?.hand || [];
+    const enemies = enemyData?.enemies || [];
+    const userPlayerName = playerData?.name || '{{user}}';
 
-    // Render hands using the new context-aware getCardHTML function.
-    // For the enemy's hand, isPlayerCard is false.
-    const enemyHandHTML = enemyHand.map(card => getCardHTML(card, false)).join('');
-    // For the player's own hand, isPlayerCard is true.
+    const opponentsHTML = enemies.map(enemy => {
+        const isEnemyTurn = gameState?.current_turn === enemy.name;
+        const enemyHandHTML = (enemy.hand || []).map(card => getCardHTML(card, false)).join('');
+
+        return `
+            <div class="opponent-container ${isEnemyTurn ? 'active-turn' : ''}">
+                <div class="opponent-info">
+                    <div class="opponent-name">${enemy.name || 'Opponent'}</div>
+                    <div class="opponent-style">${enemy.play_style || '...'}</div>
+                </div>
+                <div class="hand opponent-hand">
+                    ${enemyHandHTML}
+                </div>
+            </div>
+        `;
+    }).join('');
+
     const playerHandHTML = playerHand.map(card => getCardHTML(card, true)).join('');
-    // For board cards, they don't belong to a player, so isPlayerCard is false.
     const boardCardsHTML = (gameState?.board_cards || []).map(card => getCardHTML(card, false)).join('');
+    const customWagers = gameState?.custom_wagers || [];
+    const customWagersHTML = customWagers.map(wager => `
+        <div class="custom-wager-item">${wager.player} 赌上了: <strong>${wager.item}</strong></div>
+    `).join('');
+
 
     const inventoryVisibleClass = AIGame_State.isInventoryVisible ? 'inventory-visible' : '';
     
     const potAmount = gameState?.pot_amount ?? 0;
-    const isPlayerTurn = gameState?.current_turn === playerData.name;
-    const isEnemyTurn = gameState?.current_turn === enemyData.name;
+    const isPlayerTurn = gameState?.current_turn === userPlayerName;
 
     return `
         <div class="game-table-container ${inventoryVisibleClass}">
             <div class="game-table">
                 <div class="felt-surface"></div>
                 
-                <div class="game-area opponent-area ${isEnemyTurn ? 'active-turn' : ''}">
-                    <div class="opponent-info">
-                        <div class="opponent-name">${enemyData.name || 'Opponent'}</div>
-                        <div class="opponent-style">${enemyData.play_style || '...'}</div>
-                    </div>
-                    <div class="hand">
-                        ${enemyHandHTML}
-                    </div>
+                <div class="game-area opponent-area">
+                    ${opponentsHTML}
                 </div>
 
                 <div class="game-area board-area">
                     <div class="pot">
                         <div>彩池</div>
                         <div class="pot-amount">$${potAmount.toLocaleString()}</div>
+                    </div>
+                    <div class="custom-wagers-area">
+                        ${customWagersHTML}
                     </div>
                     <div class="community-cards">
                         ${boardCardsHTML}
@@ -103,15 +138,11 @@ export function getGameTableHTML(playerData, enemyData, gameState) {
                             ${playerHandHTML}
                         </div>
                         <div class="action-buttons">
-                            <button data-action="bet">下注</button>
-                            <button data-action="check">过牌</button>
-                            <button data-action="fold">弃牌</button>
-                            <button data-action="showdown">摊牌</button>
+                            ${getActionButtonsHTML(gameState)}
                         </div>
                     </div>
                 </div>
             </div>
-            ${getPlayerHUDHTML(playerData)}
             ${getPlayerInventoryHTML(playerData.inventory || [])}
             <button class="inventory-toggle-btn" title="切换道具栏"><i class="fas fa-chevron-left"></i></button>
         </div>

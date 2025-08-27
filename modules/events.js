@@ -8,6 +8,22 @@ import { Logger } from './logger.js';
 
 let jQuery_API, parentWin, DataHandler, UI, toastr_API, SillyTavern_Context_API;
 
+// Lazy load showdown converter
+let markdownConverter = null;
+
+function getMarkdownConverter() {
+    if (!markdownConverter) {
+        if (parentWin.showdown && typeof parentWin.showdown.Converter === 'function') {
+            markdownConverter = new parentWin.showdown.Converter();
+        } else {
+            Logger.error("Showdown markdown converter is not available on the parent window.");
+            return null;
+        }
+    }
+    return markdownConverter;
+}
+
+
 export const AIGame_Events = {
     init: function(deps, dataHandler, uiHandler) {
         jQuery_API = deps.jq;
@@ -41,15 +57,8 @@ export const AIGame_Events = {
             if (closest('.sillypoker-close-btn').length) {
                 UI.togglePanel(false);
             }
-            else if (closest('.sillypoker-create-book-btn').length) {
-                DataHandler.createGameBookEntries();
-            }
             else if (closest('.sillypoker-tab').length) {
                 const tabId = closest('.sillypoker-tab').data('tab');
-                if (!AIGame_State.runInProgress && (tabId === 'game-ui' || tabId === 'map')) {
-                    toastr_API.info('请先开始一次新的挑战。');
-                    return;
-                }
                 if (tabId !== AIGame_State.currentActiveTab) {
                     AIGame_State.currentActiveTab = tabId;
                     AIGame_State.selectedMapNodeId = null; // Clear selection when switching tabs
@@ -70,23 +79,33 @@ export const AIGame_Events = {
                  UI.renderPanelContent();
             }
             else if (targetId === 'sillypoker-escape-btn') {
-                 DataHandler.attemptEscape();
+                 if (!AIGame_State.runInProgress) {
+                    toastr_API.warning("你必须在一次挑战中才能尝试逃跑。");
+                    return;
+                 }
+                 const confirmResult = await SillyTavern_Context_API.callGenericPopup(
+                    `你确定要尝试逃跑吗？这可能会导致你失去生命值。`,
+                    SillyTavern_Context_API.POPUP_TYPE.CONFIRM
+                 );
+                 if (confirmResult) {
+                    DataHandler.attemptEscape();
+                 }
             }
             else if (closest('.difficulty-option-btn').length) {
                 const difficulty = closest('.difficulty-option-btn').data('difficulty');
                 DataHandler.startNewRun(difficulty);
             }
-             else if (closest('.restart-challenge-btn').length) {
-                const confirmResult = await SillyTavern_Context_API.callGenericPopup(
-                    '你确定要重新开始吗？所有进度都将丢失。',
-                    SillyTavern_Context_API.POPUP_TYPE.CONFIRM,
-                    '', {
-                        title: '确认'
-                    }
-                );
-                if (confirmResult) {
-                    await DataHandler.resetAllGameData();
-                }
+            else if (closest('.restart-challenge-btn').length) {
+                 const confirmResult = await SillyTavern_Context_API.callGenericPopup(
+                    `你确定要放弃当前的挑战吗？所有进度都将丢失。`,
+                    SillyTavern_Context_API.POPUP_TYPE.CONFIRM
+                 );
+                 if (confirmResult) {
+                    DataHandler.resetAllGameData();
+                 }
+            }
+            else if (closest('.sillypoker-create-book-btn').length) {
+                DataHandler.createGameBookEntries();
             }
             else if (targetId === 'map-zoom-in') {
                 UI.zoomMapByStep('in');
@@ -94,20 +113,15 @@ export const AIGame_Events = {
             else if (targetId === 'map-zoom-out') {
                 UI.zoomMapByStep('out');
             }
-            else if (closest('.map-travel-btn').length) {
-                if (AIGame_State.selectedMapNodeId) {
-                    const selectedNode = AIGame_State.mapData.nodes.find(n => n.id === AIGame_State.selectedMapNodeId);
-                    if (selectedNode) {
-                        Logger.log(`Player clicked travel button for node ${selectedNode.id} (${selectedNode.type}).`);
-                        DataHandler.travelToNode(selectedNode.id, selectedNode.type);
-                    }
-                }
-            }
             else if (closest('.inventory-toggle-btn').length) {
                 AIGame_State.isInventoryVisible = !AIGame_State.isInventoryVisible;
                 jQuery_API(parentWin.document.body).find('.game-table-container').toggleClass('inventory-visible', AIGame_State.isInventoryVisible);
                 const icon = panel.find('.inventory-toggle-btn i');
                 icon.toggleClass('fa-chevron-left fa-chevron-right');
+            }
+            else if (closest('.inventory-item:not(.empty)').length) {
+                const itemIndex = closest('.inventory-item').data('index');
+                DataHandler.useItem(itemIndex);
             }
             else if (closest('#sillypoker-commit-btn').length) {
                 await DataHandler.commitStagedActions();
@@ -117,8 +131,18 @@ export const AIGame_Events = {
                 const actionType = actionButton.data('action');
                 let action = { type: actionType };
 
+                const selectedCards = [];
+                if (actionType === 'fold' || actionType === 'play_cards') {
+                     panel.find('.player-area .hand .card.selected').each(function() {
+                        const suit = jQuery_API(this).data('suit');
+                        const rank = jQuery_API(this).find('.card-rank').text();
+                        selectedCards.push({ suit, rank });
+                    });
+                    action.cards = selectedCards;
+                }
+
                 if (actionType === 'bet') {
-                    const amountStr = await SillyTavern_Context_API.callGenericPopup('请输入下注金额', SillyTavern_Context_API.POPUP_TYPE.INPUT, '100');
+                    const amountStr = await SillyTavern_Context_API.callGenericPopup('请输入下注金额:', SillyTavern_Context_API.POPUP_TYPE.INPUT, '100');
                     if (amountStr === false || amountStr === null || String(amountStr).trim() === '') return;
                     
                     const amount = parseInt(amountStr, 10);
@@ -133,22 +157,13 @@ export const AIGame_Events = {
                     action.amount = amount;
                 }
                 
-                if (actionType === 'fold' || actionType === 'showdown') {
-                    const selectedCards = [];
-                    panel.find('.player-area .hand .card.selected').each(function() {
-                        const cardEl = jQuery_API(this);
-                        selectedCards.push({
-                            suit: cardEl.data('suit'),
-                            rank: cardEl.find('.card-rank').text()
-                        });
-                    });
-                    
-                    if (selectedCards.length > 0) {
-                        action.cards = selectedCards;
-                    } else if (actionType === 'showdown' && AIGame_State.playerCards.current_hand.length > 0) {
-                        // If showdown is clicked with no specific cards selected, assume all cards are shown.
-                        action.cards = AIGame_State.playerCards.current_hand;
+                if (actionType === 'custom') {
+                    const customActionText = await SillyTavern_Context_API.callGenericPopup('请输入你的自定义动作:', SillyTavern_Context_API.POPUP_TYPE.INPUT, '');
+                    if (customActionText && String(customActionText).trim() !== '') {
+                        action.text = String(customActionText).trim();
+                        DataHandler.stagePlayerAction(action);
                     }
+                    return; // a separate path, don't fall through
                 }
                 
                 DataHandler.stagePlayerAction(action);
@@ -156,69 +171,110 @@ export const AIGame_Events = {
             else if (closest('.player-area .hand .card').length) {
                 closest('.player-area .hand .card').toggleClass('selected');
             }
-        });
+            else if (closest('.rules-list-item').length) {
+                const ruleId = closest('.rules-list-item').data('rule-id');
+                const contentPanel = panel.find('.rules-content-display');
+                const ruleItems = panel.find('.rules-list-item');
 
-        // Map-specific interactions are now added in ui.js after the map is rendered.
-    },
+                ruleItems.removeClass('active');
+                closest('.rules-list-item').addClass('active');
 
-    addMapInteractionListeners(mapContent) {
-        // Cleanup previous listeners to prevent duplication
-        mapContent.off('.sillypoker_map_interaction');
-        jQuery_API(parentWin.document).off('.sillypoker_map_pan_move .sillypoker_map_pan_end');
-    
-        // Mousedown starts the process for either a click or a pan
-        mapContent.on('mousedown.sillypoker_map_interaction', '.map-pan-zoom-container', function(e_down) {
-            if (e_down.button !== 0) return; // Only left-click
-    
-            const container = jQuery_API(this);
-            let hasDragged = false;
-            let lastPos = { x: e_down.clientX, y: e_down.clientY };
-            
-            const targetNode = jQuery_API(e_down.target).closest('.map-node.reachable');
-    
-            jQuery_API(parentWin.document).on('mousemove.sillypoker_map_pan_move', function(e_move) {
-                const dx = e_move.clientX - lastPos.x;
-                const dy = e_move.clientY - lastPos.y;
-    
-                if (!hasDragged && (Math.abs(dx) > 3 || Math.abs(dy) > 3)) { // Smaller drag threshold
-                    hasDragged = true;
-                    container.css('cursor', 'grabbing');
+                try {
+                    const ruleJsUrl = new URL(import.meta.url);
+                    const basePath = ruleJsUrl.pathname.substring(0, ruleJsUrl.pathname.lastIndexOf('/modules'));
+                    const ruleFileUrl = `${basePath}/rules/${ruleId}.md`;
+                    const response = await fetch(ruleFileUrl);
+                    if (!response.ok) throw new Error('Rule file not found.');
+                    const markdown = await response.text();
+                    const converter = getMarkdownConverter();
+                    if(converter) {
+                         contentPanel.html(converter.makeHtml(markdown));
+                    } else {
+                        contentPanel.text('Markdown 渲染器加载失败。');
+                    }
+                } catch (err) {
+                    contentPanel.html('<p>无法加载该规则的说明。</p>');
+                    Logger.error(`加载规则文件失败: ${ruleId}.md`, err);
                 }
-    
-                if (hasDragged) {
-                    UI.panMap(dx, dy);
-                }
-                
-                lastPos = { x: e_move.clientX, y: e_move.clientY };
-            }).one('mouseup.sillypoker_map_pan_end', function() {
-                jQuery_API(parentWin.document).off('.sillypoker_map_pan_move');
-                container.css('cursor', 'grab');
-    
-                if (!hasDragged && targetNode.length > 0) {
-                    // It was a click on a reachable node.
-                    const nodeId = targetNode.data('node-id');
-                    Logger.log(`Node ${nodeId} was clicked.`);
-                    AIGame_State.selectedMapNodeId = nodeId;
-                    UI.renderActiveTabContent();
-                }
-            });
-    
-            // Prevent default browser drag behavior
-            e_down.preventDefault();
+            }
         });
         
-        // Double click to travel, managed as a separate event
-        mapContent.on('dblclick.sillypoker_map_interaction', '.map-node.reachable', function(e) {
-            e.preventDefault();
+    },
+
+    addMapInteractionListeners(container) {
+        const mapContent = container; // The container is now the map view itself
+        
+        let isPanning = false;
+        let lastMousePos = { x: 0, y: 0 };
+        let dragStartPos = { x: 0, y: 0 };
+        const CLICK_THRESHOLD = 5; // To differentiate pan from click
+
+        // Cleanup old listeners to prevent multiple bindings
+        const panZoomContainer = mapContent.find('.map-pan-zoom-container');
+        panZoomContainer.off('.sillypoker_map_interaction');
+        jQuery_API(parentWin.document).off('.sillypoker_map_pan');
+
+        panZoomContainer.on('mousedown.sillypoker_map_interaction', function(e) {
+            if (e.button !== 0) return;
+            isPanning = true;
+            lastMousePos = { x: e.clientX, y: e.clientY };
+            dragStartPos = { x: e.clientX, y: e.clientY };
+            jQuery_API(this).css('cursor', 'grabbing');
+        });
+
+        panZoomContainer.on('click.sillypoker_map_interaction', '.map-node.reachable', function(e) {
+             e.stopPropagation();
+             const node = jQuery_API(this);
+             const nodeId = node.data('node-id');
+
+             if (AIGame_State.selectedMapNodeId === nodeId) return; // Already selected
+
+             AIGame_State.selectedMapNodeId = nodeId;
+             UI.renderActiveTabContent(); // Re-render to show selection change
+        });
+        
+        panZoomContainer.on('dblclick.sillypoker_map_interaction', '.map-node.reachable', function(e) {
+            e.stopPropagation();
             const node = jQuery_API(this);
             const nodeId = node.data('node-id');
             const nodeType = node.data('node-type');
-            Logger.log(`Player double-clicked to travel to node ${nodeId} (${nodeType}).`);
             DataHandler.travelToNode(nodeId, nodeType);
         });
         
-        // Wheel for zooming
-        mapContent.on('wheel.sillypoker_map_interaction', '.map-pan-zoom-container', function(e) {
+        // This targets the travel button inside the details panel
+        mapContent.closest('.map-view-wrapper').find('.map-details-panel').on('click.sillypoker_map_interaction', '.map-travel-btn', function(e){
+            e.stopPropagation();
+            if (AIGame_State.selectedMapNodeId) {
+                const nodeElement = container.find(`.map-node[data-node-id="${AIGame_State.selectedMapNodeId}"]`);
+                if (nodeElement.length) {
+                    DataHandler.travelToNode(AIGame_State.selectedMapNodeId, nodeElement.data('node-type'));
+                }
+            }
+        });
+
+
+        jQuery_API(parentWin.document).on('mouseup.sillypoker_map_pan', (e) => {
+            if (isPanning) {
+                isPanning = false;
+                panZoomContainer.css('cursor', 'grab');
+                const dx = Math.abs(e.clientX - dragStartPos.x);
+                const dy = Math.abs(e.clientY - dragStartPos.y);
+                if (dx > CLICK_THRESHOLD || dy > CLICK_THRESHOLD) {
+                    e.stopPropagation();
+                }
+            }
+        });
+
+        jQuery_API(parentWin.document).on('mousemove.sillypoker_map_pan', (e) => {
+            if (isPanning) {
+                const dx = e.clientX - lastMousePos.x;
+                const dy = e.clientY - lastMousePos.y;
+                lastMousePos = { x: e.clientX, y: e.clientY };
+                UI.panMap(dx, dy);
+            }
+        });
+        
+        panZoomContainer.on('wheel.sillypoker_map_interaction', function(e) {
             e.preventDefault();
             const container = jQuery_API(this);
             const rect = container[0].getBoundingClientRect();
@@ -235,7 +291,7 @@ export const AIGame_Events = {
         let dragOffsetY = 0;
 
         panel.off('mousedown.sillypoker_drag_init').on('mousedown.sillypoker_drag_init', '.sillypoker-header', (e) => {
-            if (jQuery_API(e.target).is('button, i, .map-action-btn, input, .map-zoom-btn, .map-travel-btn')) return;
+            if (jQuery_API(e.target).is('button, i, .map-action-btn, input, .map-zoom-btn, .sillypoker-header-btn')) return;
             isDragging = true;
             const panelRect = panel[0].getBoundingClientRect();
             dragOffsetX = e.clientX - panelRect.left;

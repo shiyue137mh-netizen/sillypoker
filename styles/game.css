@@ -69,21 +69,41 @@
     flex-direction: column;
     align-items: center;
     gap: 15px;
-}
-
-.opponent-area { 
-    min-height: 140px; /* Reduced min-height */
-    text-align: center; 
-    color: var(--text-light); 
-    flex-shrink: 0;
-}
-.opponent-info, .player-hand-actions {
     transition: box-shadow 0.5s ease-in-out, transform 0.3s ease;
     border-radius: 12px;
     padding: 5px;
 }
 
-.opponent-area.active-turn .opponent-info,
+.opponent-area {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    align-items: flex-start;
+    width: 100%;
+    min-height: 140px;
+    flex-shrink: 0;
+}
+
+.opponent-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    padding: 5px;
+    border-radius: 8px;
+    transition: box-shadow 0.5s ease-in-out, transform 0.3s ease;
+}
+
+.opponent-container.active-turn {
+    box-shadow: 0 0 20px 5px rgba(249, 168, 37, 0.55);
+    transform: scale(1.03);
+}
+
+.opponent-info {
+    text-align: center;
+    color: var(--text-light);
+}
+
 .player-area.active-turn .player-hand-actions {
     box-shadow: 0 0 20px 5px rgba(249, 168, 37, 0.55);
     transform: scale(1.03);
@@ -91,10 +111,11 @@
 
 .opponent-name { 
     font-family: 'Playfair Display', serif; 
-    font-size: 1.5rem; 
+    font-size: 1.2rem; /* Slightly smaller for multiple opponents */
 }
 .opponent-style { 
     font-style: italic; 
+    font-size: 0.8rem;
     opacity: 0.8; 
 }
 
@@ -133,9 +154,23 @@
 }
 .hand { 
     display: flex; 
-    gap: -45px; /* Adjusted for smaller cards */
+    gap: -45px; /* Overlap player cards */
     padding-left: 45px; /* Offset for card overlap */
 }
+
+.opponent-hand {
+    gap: -65px; /* Tighter overlap for many cards */
+    padding-left: 65px;
+    transform: scale(0.85); /* Make opponent cards smaller */
+}
+
+/* Disable hover effects on opponent cards to prevent UI clutter */
+.opponent-hand:hover > .card,
+.opponent-hand > .card:hover ~ .card,
+.opponent-hand:hover > .card:hover {
+    transform: none;
+}
+
 .card { 
     width: 80px;  /* Reduced size */
     height: 112px; /* Reduced size */
@@ -261,4 +296,20 @@
 .card.revealed {
     border-color: var(--revealed-glow-color);
     box-shadow: 0 0 15px rgba(74, 222, 128, 0.7), 0 5px 15px rgba(0,0,0,0.4);
+}
+
+.custom-wagers-area {
+    color: var(--text-light);
+    text-align: center;
+    font-size: 0.9rem;
+    padding: 5px 0;
+}
+
+.custom-wager-item {
+    padding: 2px 0;
+}
+
+.custom-wager-item strong {
+    color: var(--gold-accent);
+    font-weight: 500;
 }

@@ -3,41 +3,24 @@
     --status-border: #4b5563;
     --gold-accent: #f9a825;
     --health-red: #ef4444;
+    --text-light: #e0e0e0;
 }
 
-.player-status-wrapper {
+#sillypoker-global-hud-container .player-hud {
     display: flex;
-    gap: 20px;
-    align-items: flex-end;
-}
-
-/* Player HUD (Health and Chips) */
-.player-hud {
-    position: absolute;
-    bottom: 25px;
-    right: 35px;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 10px;
-    background: var(--status-bg);
-    padding: 10px 15px;
-    border-radius: 10px;
-    border: 1px solid var(--status-border);
-    backdrop-filter: blur(5px);
-    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-    z-index: 10;
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
 }
 
 .health-display {
     display: flex;
-    gap: 4px;
+    gap: 2px;
 }
 
 .heart-icon {
-    width: 28px;
-    height: 28px;
-    filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5));
+    width: 20px;
+    height: 20px;
 }
 
 .heart-icon.filled path {
@@ -55,17 +38,17 @@
 .chips-display {
     display: flex;
     align-items: center;
-    gap: 8px;
-    font-size: 1.5rem;
+    gap: 6px;
+    font-size: 1rem;
     font-weight: 500;
     color: var(--gold-accent);
 }
 
 .chips-display .fa-coins {
-    font-size: 1.2rem;
+    font-size: 0.9rem;
 }
 
-/* Interactive Inventory Panel */
+/* Interactive Inventory Panel (Part of Game Table) */
 .inventory-toggle-btn {
     position: absolute;
     right: 0;
@@ -111,41 +94,33 @@
     transform: translate(-100px, -50%);
 }
 
-
-.inventory-header {
-    text-align: center;
-    font-weight: 500;
-    color: #9ca3af;
-    margin-bottom: 8px;
-    font-size: 14px;
-}
-
-.inventory-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 6px;
-}
-
 .inventory-item {
-    width: 100%;
-    aspect-ratio: 1 / 1;
-    background: rgba(0,0,0,0.3);
-    border: 1px solid #374151;
-    border-radius: 6px;
+    width: 60px;
+    height: 60px;
+    margin: 4px auto;
+    background: #374151;
+    border-radius: 8px;
+    border: 1px solid #4b5563;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.5rem;
-    color: #6b7280;
+    font-size: 2.5rem; /* Larger font size for emojis */
+    color: #d1d5db;
     transition: all 0.2s ease;
+    user-select: none;
 }
 
 .inventory-item:not(.empty) {
     cursor: pointer;
-    background: #374151;
 }
 
 .inventory-item:not(.empty):hover {
+    background: #4b5563;
     border-color: var(--gold-accent);
-    transform: scale(1.05);
+    transform: scale(1.1);
+}
+
+.inventory-item.empty {
+    background: rgba(17, 24, 39, 0.5);
+    border-style: dashed;
 }

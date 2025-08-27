@@ -73,6 +73,9 @@
     align-items: center;
     gap: 12px;
 }
+.header-left-icons {
+    gap: 16px; /* Increased gap for HUD */
+}
 .header-right-icons {
     cursor: default;
 }
@@ -119,6 +122,7 @@
     position: relative;
     display: flex; /* Ensure content can be centered */
     background: var(--content-bg);
+    min-height: 0; /* Fix for flexbox children overflow */
 }
 .sillypoker-content-centerer {
     margin: auto;
@@ -173,6 +177,8 @@
 .sillypoker-tab-content-wrapper {
     flex-grow: 1;
     position: relative; /* For positioning tab content */
+    display: flex; /* Make it a flex container */
+    flex-direction: column; /* Stack children vertically */
 }
 .sillypoker-tab-content {
     position: absolute;
@@ -183,10 +189,14 @@
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.3s ease, visibility 0.3s ease;
+    display: flex; /* Children will be managed by flex */
+    flex-direction: column;
 }
 .sillypoker-tab-content.active {
     opacity: 1;
     visibility: visible;
+    position: static; /* Let it participate in the flex flow */
+    flex-grow: 1;
 }
 .sillypoker-commit-btn {
     position: absolute;
@@ -356,10 +366,4 @@
 
 .sillypoker-btn-danger:hover:not(:disabled) {
     background: #b91c1c;
-}
-
-.sillypoker-btn-danger:disabled {
-    background: #4b5563;
-    cursor: not-allowed;
-    opacity: 0.7;
 }
