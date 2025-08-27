@@ -1,0 +1,10 @@
+
+{
+  "display_name": "AI Card Table",
+  "author": "AI Engineer",
+  "version": "8.2.0",
+  "description": "[功能扩展] 新增难度选择、重置挑战和逃跑机制，构建完整的Roguelike游戏循环。",
+  "js": "script.js",
+  "css": "style.css",
+  "html": "panel.html"
+}

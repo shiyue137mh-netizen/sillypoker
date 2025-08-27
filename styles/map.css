@@ -1,0 +1,237 @@
+:root {
+    --map-bg: #1a1a1a;
+    --path-color: #4a5568;
+    --node-glow: #f9a825;
+    --node-glow-current: #4299e1;
+    --node-glow-selected: #4ade80;
+    --text-light: #e0e0e0;
+}
+
+.map-view-wrapper { 
+    display: flex; 
+    flex-direction: row; /* Changed to row for side panel */
+    width: 100%; 
+    height: 100%; 
+    background: var(--map-bg); 
+}
+.map-main-content {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; /* Important for pan-zoom container */
+}
+.map-details-panel {
+    width: 250px;
+    flex-shrink: 0;
+    background: #111827;
+    border-left: 1px solid #374151;
+    padding: 20px;
+    color: var(--text-light);
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+.details-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: #6b7280;
+    height: 100%;
+    font-style: italic;
+}
+.details-title {
+    font-size: 1.5rem;
+    font-weight: 500;
+    color: var(--gold-accent);
+    text-align: center;
+}
+.details-icon {
+    text-align: center;
+    font-size: 4rem;
+    opacity: 0.8;
+}
+.details-description {
+    font-size: 0.9rem;
+    color: #9ca3af;
+    text-align: center;
+    line-height: 1.5;
+}
+.details-instructions {
+    margin-top: auto;
+    font-size: 0.8rem;
+    color: #4b5563;
+    text-align: center;
+}
+
+.details-actions {
+    margin-top: 15px;
+    display: flex;
+    justify-content: center;
+}
+
+.map-travel-btn {
+    background: #4f46e5; 
+    color: white; 
+    border: none; 
+    padding: 8px 16px; 
+    border-radius: 5px; 
+    cursor: pointer; 
+    font-size: 14px;
+    font-weight: 500;
+    width: 100%;
+    transition: background-color 0.2s;
+}
+
+.map-travel-btn:hover { 
+    background: #4338ca; 
+}
+
+.map-header { 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    padding: 8px 16px; 
+    background-color: #111827; 
+    border-bottom: 1px solid #374151; 
+    flex-shrink: 0; 
+    color: var(--text-light); 
+}
+.map-header-title { 
+    margin: 0;
+    font-size: 16px; 
+}
+.map-header-buttons { 
+    display: flex; 
+    gap: 10px; 
+    align-items: center;
+}
+.map-action-btn { 
+    background: #4f46e5; 
+    color: white; 
+    border: none; 
+    padding: 6px 12px; 
+    border-radius: 5px; 
+    cursor: pointer; 
+    font-size: 13px; 
+}
+.map-action-btn:hover { 
+    background: #4338ca; 
+}
+
+.map-zoom-controls {
+    display: flex;
+    gap: 4px;
+    margin-left: 10px;
+}
+
+.map-zoom-btn {
+    background: #374151;
+    border: 1px solid #4b5563;
+    color: var(--text-light);
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.map-zoom-btn:hover {
+    background: #4b5563;
+}
+
+
+.map-pan-zoom-container {
+    flex-grow: 1;
+    overflow: hidden;
+    cursor: grab;
+    position: relative;
+}
+.map-pan-zoom-container:active {
+    cursor: grabbing;
+}
+.map-canvas {
+    position: relative;
+    width: 600px;
+    height: 800px;
+    transform-origin: 0 0;
+}
+.map-svg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    pointer-events: none; /* Paths should not block interaction */
+}
+.map-nodes-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 600px;
+    height: 800px;
+}
+.map-path { 
+    stroke: var(--path-color); 
+    stroke-width: 3; 
+    transition: stroke 0.3s ease; 
+}
+.map-path.traveled {
+    stroke: var(--node-glow-current);
+    stroke-width: 4;
+}
+.map-node {
+    position: absolute;
+    transform: translate(-50%, -50%); /* Center the node on its coordinates */
+    transition: transform 0.2s ease-out, opacity 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.map-node:not(.unreachable):not(.visited):hover > .node-bg { 
+    transform: scale(1.2); 
+}
+.map-node.reachable { 
+    cursor: pointer; 
+}
+.map-node.reachable > .node-bg { 
+    filter: drop-shadow(0 0 8px var(--node-glow)); 
+}
+.map-node.selected > .node-bg {
+    stroke: var(--node-glow-selected);
+    filter: drop-shadow(0 0 12px var(--node-glow-selected));
+    transform: scale(1.1);
+}
+.map-node.current-position > .node-bg { 
+    stroke: var(--node-glow-current); 
+    filter: drop-shadow(0 0 12px var(--node-glow-current)); 
+    transform: scale(1.1); 
+}
+.map-node.visited { 
+    opacity: 0.5; 
+}
+.map-node.unreachable { 
+    opacity: 0.3; 
+    pointer-events: none; 
+}
+.node-bg { 
+    stroke-width: 3; 
+    transition: all 0.2s ease-out; 
+    transform-origin: center;
+}
+.node-icon { 
+    font-family: "Font Awesome 5 Free"; 
+    font-weight: 900; 
+    color: var(--text-light); 
+    font-size: 1.5rem; 
+    position: absolute;
+    pointer-events: none; 
+}
+
+/* Node Type Styles */
+.node-enemy .node-bg { fill: #2d3748; stroke: #4a5568; }
+.node-elite .node-bg { fill: #b7791f; stroke: #ddab4d; }
+.node-shop .node-bg { fill: #2c5282; stroke: #63b3ed; }
+.node-rest .node-bg { fill: #2f855a; stroke: #68d391; }
+.node-event .node-bg { fill: #5b21b6; stroke: #a78bfa; }
+.node-boss .node-bg { fill: #9b2c2c; stroke: #f56565; }

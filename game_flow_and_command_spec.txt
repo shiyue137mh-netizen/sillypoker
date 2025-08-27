@@ -1,0 +1,116 @@
+# AI驱动的通用卡牌游戏框架 - 核心流程与指令集 V1.2
+
+## 1.0 核心理念 (Core Philosophy)
+
+本框架旨在将AI定义为游戏的“引擎”与“灵魂”。AI不仅是玩家的对手，更是游戏规则的制定者、裁判和叙事者。前端UI则是一个忠实的“渲染器”，它不包含任何硬编码的游戏逻辑，而是根据AI通过标准化指令发送的游戏状态，动态地构建和更新界面。这种架构使得游戏类型可以无限扩展，甚至允许AI即时创造全新的玩法。
+
+## 2.0 数据架构 (Data Architecture)
+
+游戏的所有状态都通过SillyTavern的世界书条目进行管理，确保AI与前端UI之间的数据绝对同步。
+
+- **`sillypoker_player_data.json`**: (AI可见) 存储玩家的公开状态，如生命值、筹码、道具等。
+- **`sillypoker_enemy_data.json`**: (AI可见) 存储当前对手的公开状态，在每次遭遇新敌人时由`[Game:Start]`指令进行初始化。
+- **`sillypoker_player_cards.json`**: (AI不可见) 存储玩家的私密信息，主要是手牌。由前端脚本根据`[Game:Function]`指令进行更新。
+- **`sillypoker_map_data.json`**: (AI不可见) 存储当前Roguelike地图的结构和玩家位置。
+- **`sillypoker_current_game_state.json`**: (AI可见) **[核心]** 这是一个至关重要的临时状态条目。它存储当前牌局的**所有**公共信息，包括游戏规则、**公共牌(board_cards)**、彩池金额、当前轮到谁行动等。AI将主要读取此文件来做决策。
+- **`sillypoker_private_game_data.json`**: (AI不可见) **[新增]** 用于存放**牌堆(deck)**等不应被AI看到的私有游戏数据。
+
+## 3.0 游戏流程详解 (Detailed Game Flow)
+
+这是一个完整的单回合交互循环：
+
+1.  **游戏开始 / 地图导航**
+    *   **玩家操作**: 在地图界面上，玩家点击一个可达的节点（例如，一个“敌人”节点）。
+    *   **前端响应**:
+        1.  脚本更新`sillypoker_map_data.json`中的`player_position`。
+        2.  脚本向酒馆聊天窗口发送一条系统提示。
+        3.  **发送给AI的提示**: `(系统提示：玩家移动到了一个敌人节点。) `
+
+2.  **遭遇与游戏初始化 (AI响应)**
+    *   **AI响应**: AI接收到提示，进入“游戏主持人(GM)”模式，开始构建游戏场景。
+    *   **AI输出指令序列**:
+        1.  **`[Game:Start, data:{...}]`**: 这是遭遇的开始信号。
+            *   **`data`内容**: `{ "game_type": "TexasHoldem", "players": ["{{user}}", "拦路劫匪"], "initial_state": { "name": "拦路劫匪", "play_style": "Aggressive", "chips": 800, ... } }`
+            *   **前端职责**:
+                *   清空旧的游戏桌面。
+                *   使用`initial_state`的数据覆盖并更新`sillypoker_enemy_data.json`。
+                *   加载游戏UI，并根据玩家和新的敌人数据显示初始状态。
+                *   初始化`sillypoker_current_game_state.json`，填入`game_type`和`players`等基础信息，并确保`board_cards`为空。
+                *   在`sillypoker_private_game_data.json`中创建并存储一副洗好的新牌堆。
+
+        2.  **`[Game:Rule, data:{...}]` (可选)**: 如果AI创造了一个新游戏，它会使用此指令。
+            *   **`data`内容**: `{ "rules": "游戏规则说明...", "win_condition": "获胜条件说明..." }`
+            *   **前端职责**: 将`rules`和`win_condition`写入`sillypoker_current_game_state.json`。UI上可以提供一个按钮让玩家随时查看规则。
+
+3.  **游戏准备 (AI继续响应)**
+    *   **AI输出指令**: `[Game:Function, type:发牌, data:{"actions":[{"target":"all", "count":2, "visibility":"owner"}]}]`
+    *   **前端职责**:
+        1.  **解析指令**: 知道要给所有玩家发2张`owner`可见的牌。
+        2.  **执行逻辑**: 从`sillypoker_private_game_data.json`中的牌堆顶部分发卡牌。
+        3.  **更新世界书**:
+            *   将随机发给玩家的牌（包含`visibility`属性）写入`sillypoker_player_cards.json` (AI不可见)。
+            *   将随机发给敌人的牌（包含`visibility`属性）写入`sillypoker_enemy_data.json` (AI可见)。
+            *   更新`sillypoker_private_game_data.json`中剩余的牌堆。
+        4.  **重新渲染**: UI根据更新后的世界书和`visibility`属性，正确地显示玩家的明牌和敌人的牌背。
+
+4.  **AI的回合**
+    *   **AI决策**: AI读取`sillypoker_current_game_state.json`和`sillypoker_player_data.json`，根据自己的`play_style`做出决策。
+    *   **AI输出指令**: `[Action:Bet, data:{"player_name":"拦路劫匪", "amount":100}]`
+    *   **前端职责**:
+        1.  解析指令，知道是敌人下注100。
+        2.  更新`sillypoker_current_game_state.json`中的彩池金额。
+        3.  更新`sillypoker_enemy_data.json`中敌人的筹码。
+        4.  播放筹码移动的动画，更新UI。
+    *   **AI叙事**: (在指令之后) "那个拦路劫匪咧嘴一笑，将一小堆筹码推向彩池中央。"
+    *   **AI等待**: AI完成它的动作后，将不再继续生成，等待玩家的输入。
+
+5.  **玩家的回合**
+    *   **玩家操作**: 玩家在UI上点击“跟注”、“弃牌”或使用道具。
+    *   **前端响应**:
+        1.  所有操作被**暂存(Staged)**，类似于手机模拟器。
+        2.  玩家点击“提交回合”按钮。
+        3.  脚本处理所有暂存操作，**立即更新**相关的世界书条目（例如，`sillypoker_player_data.json`中的筹码）。
+        4.  脚本向酒馆发送一条描述玩家所有操作的系统提示。
+        5.  **发送给AI的提示**: `(系统提示：玩家选择“跟注”。)`
+
+6.  **循环与结束**
+    *   流程回到第4步，AI根据玩家的动作做出新的反应。
+    *   当满足游戏结束条件时，AI进行判定。
+    *   **AI输出指令**: `[Game:End, data:{"result":"lose", "reason":"你的牌面小于对手的同花顺。"}]`
+    *   **前端职责**:
+        1.  解析`result`。
+        2.  如果结果是`lose`，则更新`sillypoker_player_data.json`，将`health`减1。
+        3.  播放对应的胜利/失败动画。
+        4.  UI切换回地图界面，等待玩家进行下一步操作。
+
+## 4.0 核心指令集 (Core Command Set)
+
+#### 游戏管理 (Game Management)
+- **`[Game:Start, data:{...}]`**: 初始化一场遭遇/牌局。
+  - **`data`**: `{ "game_type": "游戏类型", "players": ["玩家名", "敌人名"], "initial_state": { /* 敌人数据JSON */ } }`
+  - **前端职责**: 清理旧牌局，用`initial_state`更新`sillypoker_enemy_data.json`，初始化`sillypoker_current_game_state.json`，并在`sillypoker_private_game_data.json`中创建新牌堆。
+
+- **`[Game:Rule, data:{...}]`**: 定义一个自定义游戏规则。
+  - **`data`**: `{ "rules": "规则描述", "win_condition": "获胜条件" }`
+  - **前端职责**: 将规则文本存入`sillypoker_current_game_state.json`。
+
+- **`[Game:End, data:{...}]`**: 结束当前牌局。
+  - **`data`**: `{ "result": "win" | "lose" | "dead" | "escape", "reason": "结束原因描述" }`
+  - **前端职责**: 根据`result`更新玩家状态（如生命值），显示结算界面，然后返回地图。
+
+#### 游戏功能 (Game Functions)
+- **`[Game:Function, type:"发牌", data:{...}]`**: 请求后端执行发牌逻辑。
+  - **`data`**: `{ "actions": [ { "target": "...", "count": 数量, "visibility": "owner" | "hidden" | "public" }, ... ] }`
+  - **前端职责**: **执行真正的随机发牌逻辑**，从私有牌堆发牌，并分别更新`sillypoker_player_cards.json`(手牌), `sillypoker_enemy_data.json`(手牌), `sillypoker_current_game_state.json`(公共牌)和`sillypoker_private_game_data.json`(剩余牌堆)。
+
+- **`[Game:UpdateState, data:{...}]`**: (替代方案) AI直接提供完整的公共游戏状态。
+  - **`data`**: `{ /* `sillypoker_current_game_state.json` 中可公开部分的内容 */ }`
+  - **前端职责**: 用`data`的内容**合并更新**`sillypoker_current_game_state.json`。这是一个确保同步的强大指令。
+
+#### 玩家/AI行动 (Player/AI Actions)
+- **`[Action:Bet, data:{...}]`**: 下注/加注
+- **`[Action:Check, data:{...}]`**: 过牌
+- **`[Action:Call, data:{...}]`**: 跟注
+- **`[Action:Fold, data:{...}]`**: 弃牌
+  - **`data`**: `{ "player_name": "行动者名字", "amount": (可选)金额 }`
+  - **前端职责**: 更新UI和`sillypoker_current_game_state.json`中的彩池，以及对应角色的`chips`数据。

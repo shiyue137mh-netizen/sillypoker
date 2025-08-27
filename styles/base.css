@@ -1,0 +1,365 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Roboto:wght@400;500&display=swap');
+@import url("https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css");
+
+:root {
+    --panel-bg: #2b384b;
+    --header-bg: #242f40;
+    --border-color: #4a5a70;
+    --text-light: #e0e0e0;
+    --gold-accent: #f9a825;
+    --button-primary: #4f46e5;
+    --button-primary-hover: #4338ca;
+    --content-bg: #1f2937;
+}
+
+#sillypoker-toggle-btn {
+    position: fixed;
+    top: 150px;
+    left: 10px;
+    z-index: 10000;
+    width: 44px;
+    height: 44px;
+    background: #1f2937;
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    font-size: 20px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    transition: transform 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+#sillypoker-toggle-btn:hover {
+    transform: scale(1.1);
+}
+#sillypoker-panel {
+    position: fixed;
+    top: 100px;
+    left: 100px;
+    width: 800px;
+    max-width: 90vw;
+    height: 600px;
+    max-height: 80vh;
+    background: var(--panel-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    color: #e5e7eb;
+    font-family: 'Roboto', sans-serif;
+}
+#sillypoker-panel.hidden {
+    display: none;
+}
+.sillypoker-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 16px;
+    height: 48px;
+    background: var(--header-bg);
+    border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
+    user-select: none;
+    cursor: move;
+}
+.header-left-icons, .header-right-icons {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.header-right-icons {
+    cursor: default;
+}
+
+.sillypoker-header-btn {
+    background: none;
+    border: none;
+    color: var(--text-light);
+    font-size: 18px;
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s ease;
+}
+.sillypoker-header-btn:hover {
+    background-color: rgba(255,255,255,0.1);
+}
+.sillypoker-close-btn {
+    font-size: 24px;
+    font-weight: bold;
+    line-height: 1;
+}
+
+.status-indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #ef4444;
+    border: 1px solid #7f1d1d;
+    transition: all 0.3s ease;
+}
+.status-indicator.active {
+    background: #4ade80;
+    border: 1px solid #166534;
+    box-shadow: 0 0 5px #4ade80;
+}
+.sillypoker-content {
+    flex-grow: 1;
+    position: relative;
+    display: flex; /* Ensure content can be centered */
+    background: var(--content-bg);
+}
+.sillypoker-content-centerer {
+    margin: auto;
+    text-align: center;
+}
+.sillypoker-create-book-btn {
+    background: var(--button-primary);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    margin-top: 15px;
+    transition: background-color 0.2s;
+}
+.sillypoker-create-book-btn:hover {
+    background: var(--button-primary-hover);
+}
+
+.sillypoker-tabs {
+    display: flex;
+    background: var(--header-bg);
+    border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
+}
+.sillypoker-tab {
+    padding: 10px 20px;
+    background: none;
+    border: none;
+    color: #9ca3af;
+    cursor: pointer;
+    font-size: 14px;
+    position: relative;
+    transition: color 0.2s;
+}
+.sillypoker-tab:hover {
+    color: var(--text-light);
+}
+.sillypoker-tab.active {
+    color: var(--text-light);
+    font-weight: 500;
+}
+.sillypoker-tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background-color: var(--button-primary);
+}
+.sillypoker-tab-content-wrapper {
+    flex-grow: 1;
+    position: relative; /* For positioning tab content */
+}
+.sillypoker-tab-content {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+.sillypoker-tab-content.active {
+    opacity: 1;
+    visibility: visible;
+}
+.sillypoker-commit-btn {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 50px;
+    height: 50px;
+    background: var(--button-primary);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    font-size: 20px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+}
+.sillypoker-commit-btn.hidden {
+    display: none;
+}
+.sillypoker-commit-btn:hover {
+    transform: translateX(-50%) scale(1.1);
+    background: var(--button-primary-hover);
+}
+.sillypoker-commit-btn::after {
+    content: attr(data-count);
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background-color: #ef4444;
+    color: white;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    font-size: 12px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--content-bg);
+}
+
+/* Difficulty Selection Styles */
+.difficulty-selection-container {
+    padding: 30px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    text-align: center;
+}
+
+.difficulty-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 2.5rem;
+    color: var(--gold-accent);
+    margin-bottom: 10px;
+}
+
+.difficulty-subtitle {
+    font-size: 1rem;
+    color: #9ca3af;
+    margin-bottom: 30px;
+}
+
+.difficulty-options-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 20px;
+    width: 100%;
+    max-width: 600px;
+}
+
+.difficulty-option-btn {
+    background: #2b384b;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    padding: 20px;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    text-align: center;
+    color: var(--text-light);
+}
+
+.difficulty-option-btn:hover {
+    transform: translateY(-5px);
+    border-color: var(--gold-accent);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+}
+
+.difficulty-option-btn h4 {
+    margin: 0 0 10px 0;
+    font-size: 1.2rem;
+    font-weight: 500;
+}
+
+.difficulty-option-details {
+    font-size: 0.9rem;
+    color: #9ca3af;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+/* Settings Page Styles */
+.settings-view-container {
+    width: 100%;
+    padding: 30px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    box-sizing: border-box;
+}
+
+.settings-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 2.5rem;
+    color: var(--gold-accent);
+    margin-bottom: 10px;
+    text-align: center;
+}
+
+.settings-options-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.settings-option {
+    background: #2b384b;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 15px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.settings-option-text h4 {
+    margin: 0 0 5px 0;
+    font-size: 1.1rem;
+    font-weight: 500;
+}
+
+.settings-option-text p {
+    margin: 0;
+    font-size: 0.9rem;
+    color: #9ca3af;
+    max-width: 400px;
+}
+
+.sillypoker-btn-danger {
+    background: #dc2626;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    font-weight: 500;
+}
+
+.sillypoker-btn-danger:hover:not(:disabled) {
+    background: #b91c1c;
+}
+
+.sillypoker-btn-danger:disabled {
+    background: #4b5563;
+    cursor: not-allowed;
+    opacity: 0.7;
+}

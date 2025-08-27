@@ -1,0 +1,264 @@
+:root {
+    --table-bg: #0a3d1e;
+    --table-border: #5a3825;
+    --felt-green: #106f38;
+    --card-bg: #f8f8f8;
+    --card-border: #ccc;
+    --text-light: #e0e0e0;
+    --text-dark: #222;
+    --red-suit: #d93025;
+    --black-suit: #202124;
+    --gold-accent: #f9a825;
+    --special-glow: 0 0 12px rgba(249, 168, 37, 0.8);
+    --revealed-glow-color: #4ade80; /* Bright Green */
+}
+
+.game-table-container {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    overflow: hidden;
+}
+
+.game-table {
+    width: 100%;
+    height: 100%;
+    background: var(--table-bg);
+    border: 20px solid var(--table-border);
+    border-radius: 150px;
+    box-shadow: inset 0 0 25px rgba(0,0,0,0.5), 0 10px 30px rgba(0,0,0,0.5);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around; /* Changed for better spacing */
+    align-items: center;
+    padding: 20px 40px; /* Reduced vertical padding */
+    box-sizing: border-box;
+    position: relative;
+}
+.felt-surface { 
+    position: absolute; 
+    top: 20px; 
+    left: 20px; 
+    right: 20px; 
+    bottom: 20px; 
+    background: var(--felt-green); 
+    border-radius: 130px; 
+    box-shadow: inset 0 0 15px rgba(0,0,0,0.4); 
+}
+.game-area { 
+    z-index: 1; 
+    width: 100%; 
+    display: flex; 
+    justify-content: center; 
+    align-items: center; 
+    flex-wrap: wrap; 
+    gap: 15px; /* Reduced gap */
+}
+
+.player-area {
+    display: flex;
+    justify-content: center; /* Center the hand/actions part */
+    align-items: flex-end;
+    width: 100%;
+    position: relative; /* Context for inventory */
+    flex-shrink: 0;
+}
+
+.player-hand-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+}
+
+.opponent-area { 
+    min-height: 140px; /* Reduced min-height */
+    text-align: center; 
+    color: var(--text-light); 
+    flex-shrink: 0;
+}
+.opponent-info, .player-hand-actions {
+    transition: box-shadow 0.5s ease-in-out, transform 0.3s ease;
+    border-radius: 12px;
+    padding: 5px;
+}
+
+.opponent-area.active-turn .opponent-info,
+.player-area.active-turn .player-hand-actions {
+    box-shadow: 0 0 20px 5px rgba(249, 168, 37, 0.55);
+    transform: scale(1.03);
+}
+
+.opponent-name { 
+    font-family: 'Playfair Display', serif; 
+    font-size: 1.5rem; 
+}
+.opponent-style { 
+    font-style: italic; 
+    opacity: 0.8; 
+}
+
+.action-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+.action-buttons button { 
+    background: linear-gradient(145deg, #ffb74d, #f9a825);
+    color: var(--text-dark); 
+    border: none;
+    border-radius: 8px; 
+    padding: 10px 20px; 
+    font-size: 1rem; 
+    font-weight: 500; 
+    cursor: pointer; 
+    transition: all 0.2s ease; 
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2), inset 0 -2px 1px rgba(0,0,0,0.1);
+    text-shadow: 0 1px 0 rgba(255,255,255,0.3);
+}
+.action-buttons button:hover:not(:disabled) { 
+    transform: translateY(-2px); 
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3), inset 0 -2px 1px rgba(0,0,0,0.1);
+}
+.action-buttons button:active:not(:disabled) {
+    transform: translateY(1px);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2), inset 0 -1px 0 rgba(0,0,0,0.1);
+}
+.action-buttons button:disabled {
+    background: #9e9e9e;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    opacity: 0.6;
+}
+.hand { 
+    display: flex; 
+    gap: -45px; /* Adjusted for smaller cards */
+    padding-left: 45px; /* Offset for card overlap */
+}
+.card { 
+    width: 80px;  /* Reduced size */
+    height: 112px; /* Reduced size */
+    background: var(--card-bg); 
+    border: 1px solid var(--card-border); 
+    border-radius: 6px; /* Adjusted border-radius */
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2); 
+    position: relative; 
+    padding: 8px; /* Adjusted padding */
+    box-sizing: border-box; 
+    display: flex; 
+    flex-direction: column; 
+    justify-content: space-between; 
+    font-family: 'Playfair Display', serif; 
+    font-size: 2rem; /* Reduced font-size */
+    font-weight: 700; 
+    transition: all 0.3s ease; 
+    user-select: none; 
+}
+.player-area .card {
+    cursor: pointer;
+}
+.hand > .card { 
+    transition: transform 0.3s ease; 
+}
+.hand:hover > .card { 
+    transform: translateY(-15px); 
+}
+.hand > .card:hover ~ .card { 
+    transform: translateX(45px); /* Adjusted for overlap */
+}
+.hand:hover > .card:hover { 
+    transform: translateY(-25px) scale(1.05); 
+    z-index: 10; 
+}
+.player-area .hand .card.selected {
+    transform: translateY(-20px) scale(1.05);
+    box-shadow: 0 0 15px var(--gold-accent), 0 5px 15px rgba(0,0,0,0.4);
+    border-color: var(--gold-accent);
+}
+.hand:hover > .card.selected {
+    transform: translateY(-30px) scale(1.05);
+}
+.card.special { 
+    box-shadow: var(--special-glow); 
+    border: 1px solid var(--gold-accent); 
+}
+.card.card-back { 
+    background-image: linear-gradient(135deg, #667eea 0%, #764ba2 100%), linear-gradient(45deg, rgba(255,255,255,0.1) 25%, transparent 25%, transparent 50%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.1) 75%, transparent 75%, transparent); 
+    background-size: cover, 40px 40px; 
+    border: 1px solid #4a3a6b; 
+}
+.card.card-back .card-rank, .card.card-back .card-suit { 
+    display: none; 
+}
+.card-rank { 
+    position: absolute; 
+    top: 5px; 
+    left: 8px; /* Adjusted position */
+}
+.card-suit { 
+    position: absolute; 
+    bottom: 5px; 
+    right: 8px; /* Adjusted position */
+    font-size: 1.6rem; /* Adjusted font-size */
+}
+.card[data-suit="♥"], .card[data-suit="♦"] { 
+    color: var(--red-suit); 
+}
+.card[data-suit="♠"], .card[data-suit="♣"] { 
+    color: var(--black-suit); 
+}
+.board-area {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: center;
+    flex: 1; /* Allow this area to grow and shrink */
+    justify-content: center;
+    min-height: 0; /* Important for flex items */
+}
+.pot { 
+    text-align: center; 
+    color: var(--text-light); 
+}
+.pot-amount { 
+    font-size: 2rem; 
+    font-weight: 500; 
+    color: var(--gold-accent); 
+    text-shadow: 0 0 5px rgba(0,0,0,0.5); 
+}
+.community-cards {
+    display: flex;
+    gap: 8px; /* Reduced gap */
+}
+.community-cards .card {
+    width: 70px; /* Reduced size */
+    height: 98px; /* Reduced size */
+    font-size: 1.8rem; /* Reduced font-size */
+}
+.community-cards .card .card-suit {
+    font-size: 1.3rem; /* Reduced font-size */
+}
+
+/* New Styles for Hidden/Revealed Cards */
+.card.player-hidden {
+    filter: brightness(0.7);
+    position: relative;
+}
+
+.card.player-hidden::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 6px; /* Match card border-radius */
+    pointer-events: none;
+}
+
+.card.revealed {
+    border-color: var(--revealed-glow-color);
+    box-shadow: 0 0 15px rgba(74, 222, 128, 0.7), 0 5px 15px rgba(0,0,0,0.4);
+}
