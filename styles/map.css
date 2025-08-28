@@ -20,9 +20,9 @@
     flex-direction: column;
     overflow: hidden; /* Important for pan-zoom container */
 }
-/* MODIFIED: Restructured for better centering */
+/* MODIFIED: Restructured for better centering and widened */
 #sillypoker-panel .map-details-panel {
-    width: 300px;
+    width: 350px; /* Increased from 300px */
     flex-shrink: 0;
     background: #111827;
     border-left: 1px solid #374151;

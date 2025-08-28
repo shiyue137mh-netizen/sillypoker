@@ -2,8 +2,8 @@
 {
   "display_name": "AI Card Table",
   "author": "AI Engineer",
-  "version": "8.3.1",
-  "description": "[核心修复 & UI改进] 彻底修复刷新后游戏进度被重置的问题，现在可以无缝继续游戏。为日志和规则页面添加了功能正常的滚动条。",
+  "version": "8.4.0",
+  "description": "[架构重构 & 新功能] 重构了指令处理架构，使其更清晰、可扩展。新增了“下一层”功能，允许在击败首领后继续挑战。增加了音效反馈和逃跑机制，提升了游戏体验。",
   "js": "script.js",
   "css": "style.css",
   "html": "panel.html"

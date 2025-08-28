@@ -5,13 +5,14 @@
             <div id="sillypoker-status-indicator" class="status-indicator" title="游戏书状态">
                 <i class="fas fa-check"></i>
             </div>
-            <div id="sillypoker-global-hud-container"></div>
+            <!-- HUD will be rendered here directly by ui.js -->
         </div>
         <div class="header-title">
             <h3>SillyPoker</h3>
         </div>
         <div class="header-right-icons">
-             <i id="sillypoker-settings-icon" class="fas fa-cog sillypoker-header-btn" title="设置"></i>
+             <i id="sillypoker-surrender-btn" class="fas fa-flag sillypoker-header-btn" title="放弃"></i>
+             <i id="sillypoker-beg-btn" class="fas fa-praying-hands sillypoker-header-btn" title="求饶"></i>
              <i id="sillypoker-escape-btn" class="fas fa-running sillypoker-header-btn" title="尝试逃跑"></i>
              <button class="sillypoker-close-btn sillypoker-header-btn" title="关闭">&times;</button>
         </div>
@@ -23,7 +24,15 @@
             <p>正在初始化...</p>
         </div>
     </div>
-    <div id="sillypoker-commit-btn" class="sillypoker-commit-btn hidden" title="结束回合">
-        <i class="fas fa-play"></i>
+    <div id="sillypoker-inventory-wrapper">
+        <!-- Persistent inventory will be rendered here -->
+    </div>
+    <div id="sillypoker-commit-area" class="sillypoker-commit-area hidden">
+        <button id="sillypoker-undo-all-btn" class="sillypoker-commit-btn-secondary" title="撤销所有操作">
+            <i class="fas fa-undo"></i>
+        </button>
+        <button id="sillypoker-commit-btn" class="sillypoker-commit-btn-primary" title="结束回合">
+            <i class="fas fa-play"></i>
+        </button>
     </div>
 </div>

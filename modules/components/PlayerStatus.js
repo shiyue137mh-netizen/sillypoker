@@ -27,15 +27,18 @@ function getStatusEffectsHTML(statusEffects) {
 }
 
 
-export function getPlayerHUDHTML(playerData) {
+export function getPlayerHUDHTML(playerData, gameState) {
     if (!playerData) return '';
     const health = playerData.health ?? 0;
     const max_health = playerData.max_health ?? 0;
     const chips = playerData.chips ?? 0;
     const statusEffects = playerData.status_effects || [];
 
+    const gameTypeHTML = gameState?.game_type ? `<div class="game-type-display">${gameState.game_type}</div>` : '';
+
     return `
         <div class="player-hud">
+            ${gameTypeHTML}
             ${getHealthHTML(health, max_health)}
             <div class="chips-display">
                 <i class="fas fa-coins"></i>
@@ -46,16 +49,15 @@ export function getPlayerHUDHTML(playerData) {
     `;
 }
 
-export function getPlayerInventoryHTML(inventory, maxSlots = 5) {
+export function getPlayerInventoryHTML(inventory) {
     let itemsHTML = '';
-    for (let i = 0; i < maxSlots; i++) {
-        const item = inventory[i];
-        if (item) {
+    if (inventory && inventory.length > 0) {
+        inventory.forEach((item, i) => {
             const title = `${item.name}\n\n${item.description}\n\n类型: ${item.type === 'active' ? '主动' : '被动'}`;
             itemsHTML += `<div class="inventory-item" data-index="${i}" title="${title}">${item.icon || '？'}</div>`;
-        } else {
-            itemsHTML += '<div class="inventory-item empty"></div>';
-        }
+        });
+    } else {
+        itemsHTML = '<div class="inventory-item empty">无道具</div>';
     }
     return `<div class="inventory-panel">${itemsHTML}</div>`;
 }

@@ -2,6 +2,7 @@
  * AI Card Table Extension - Map Generation Logic v2.0
  * @description Generates a fully connected, Slay the Spire-style map.
  */
+import { shuffle } from './utils.js';
 
 const NODE_TYPES = { 
     ENEMY: 'enemy', 
@@ -11,15 +12,26 @@ const NODE_TYPES = {
     BOSS: 'boss', 
     EVENT: 'event',
     TREASURE: 'treasure',
-    UPGRADE: 'upgrade'
+    CARD_SHARP: 'card-sharp' // FIX: Renamed from UPGRADE for consistency with UI
 };
 
+/**
+ * Determines the type of a node based on its row and randomness.
+ * Increased the probability of 'event' nodes and decreased 'card-sharp' nodes.
+ * @param {number} row - The current row of the node.
+ * @param {number} totalRows - The total number of rows in the map.
+ * @returns {string} The type of the node.
+ */
 function getNodeType(row, totalRows) {
     const random = Math.random();
     // 55% chance for a combat node
     if (random < 0.55) {
-        // In later rows (after 40% of the map), there's a 30% chance for an enemy to be an elite instead.
-        if (row > totalRows * 0.4 && Math.random() < 0.3) {
+        // NEW: Elite chance now scales linearly with map progression.
+        // The chance for a combat node to be an Elite increases from 0% on the first row to ~35% on the last row.
+        const maxEliteChance = 0.35;
+        const eliteChance = maxEliteChance * (row / totalRows);
+
+        if (Math.random() < eliteChance) {
             return NODE_TYPES.ELITE;
         }
         return NODE_TYPES.ENEMY;
@@ -27,26 +39,83 @@ function getNodeType(row, totalRows) {
     // 45% chance for a non-combat/event node
     else {
         const eventRandom = Math.random();
-        if (eventRandom < 0.30) return NODE_TYPES.EVENT;      // ~13.5% total chance
-        if (eventRandom < 0.55) return NODE_TYPES.REST;       // ~11.25% total chance
-        if (eventRandom < 0.75) return NODE_TYPES.SHOP;       // ~9% total chance
-        if (eventRandom < 0.90) return NODE_TYPES.TREASURE;   // ~6.75% total chance
-        return NODE_TYPES.UPGRADE;                            // ~4.5% total chance
+        // NEW BALANCING: Increased event chance significantly
+        if (eventRandom < 0.45) return NODE_TYPES.EVENT;      // ~20.25% total chance (was 13.5%)
+        if (eventRandom < 0.65) return NODE_TYPES.REST;       // ~9% total chance
+        if (eventRandom < 0.80) return NODE_TYPES.SHOP;       // ~6.75% total chance
+        if (eventRandom < 0.95) return NODE_TYPES.TREASURE;   // ~6.75% total chance
+        return NODE_TYPES.CARD_SHARP;                         // ~2.25% total chance (was ~4.5%)
     }
 }
+
+/**
+ * Analyzes all paths from start to boss and ensures each path has at least one elite enemy.
+ * @param {Array<object>} nodes - The array of all map nodes.
+ * @param {Array<object>} paths - The array of all map paths.
+ */
+function ensureElitesOnAllPaths(nodes, paths) {
+    const adj = new Map();
+    const nodesById = new Map(nodes.map(n => [n.id, n]));
+    nodes.forEach(n => adj.set(n.id, []));
+    paths.forEach(p => adj.get(p.from)?.push(p.to));
+
+    const startNodes = nodes.filter(n => n.row === 0);
+    const bossNode = nodes.find(n => n.type === NODE_TYPES.BOSS);
+    if (!bossNode) return;
+
+    const pathsToUpgrade = [];
+
+    const dfs = (nodeId, currentPath, hasElite) => {
+        const node = nodesById.get(nodeId);
+        if (!node) return;
+
+        const newPath = [...currentPath, nodeId];
+        const newHasElite = hasElite || node.type === NODE_TYPES.ELITE;
+
+        if (nodeId === bossNode.id) {
+            if (!newHasElite) {
+                pathsToUpgrade.push(newPath);
+            }
+            return;
+        }
+        
+        const connections = adj.get(nodeId) || [];
+        connections.forEach(nextNodeId => dfs(nextNodeId, newPath, newHasElite));
+    };
+
+    startNodes.forEach(startNode => dfs(startNode.id, [], false));
+    
+    if (pathsToUpgrade.length > 0) {
+        // Use a Set to avoid upgrading the same node multiple times
+        const upgradedNodes = new Set();
+        pathsToUpgrade.forEach(path => {
+            const potentialNodesToUpgrade = path
+                .map(id => nodesById.get(id))
+                .filter(node => node && node.type === NODE_TYPES.ENEMY && !upgradedNodes.has(node.id));
+
+            if (potentialNodesToUpgrade.length > 0) {
+                // Pick a random enemy from the path to upgrade
+                const nodeToUpgrade = potentialNodesToUpgrade[Math.floor(Math.random() * potentialNodesToUpgrade.length)];
+                nodeToUpgrade.type = NODE_TYPES.ELITE;
+                upgradedNodes.add(nodeToUpgrade.id);
+            }
+        });
+    }
+}
+
 
 /**
  * Generates the data structure for a procedural map, ensuring full connectivity.
  * @param {number} layer - The current map layer index (e.g., 0 for the first floor).
  * @param {number} rowsPerLayer - The number of rows of nodes before the boss.
  * @param {number} paths - The maximum number of parallel paths.
- * @returns {{nodes: Array<object>, paths: Array<object>, player_position: string|null, path_taken: Array<string>, mapLayer: number, bossDefeated: boolean}} The generated map data.
+ * @returns {{nodes: Array<object>, paths: Array<object>, player_position: string|null, path_taken: Array<string>, mapLayer: number, bossDefeated: boolean, secret_nodes: Array<object>, searched_nodes: Array<string>}} The generated map data.
  */
 export function generateMapData(layer = 0, rowsPerLayer = 8, paths = 5) {
     const map = { nodes: [], paths: [] };
     const layerHeight = 800;
     const rowHeight = layerHeight / (rowsPerLayer + 2); // +2 for start and boss rows
-    const mapWidth = 600;
+    const mapWidth = 500; // MODIFIED: Reduced width
     const nodesByRow = Array.from({ length: rowsPerLayer }, () => []);
 
     // 1. Generate all regular nodes
@@ -87,7 +156,6 @@ export function generateMapData(layer = 0, rowsPerLayer = 8, paths = 5) {
 
         // Each node in the current row must connect to at least one in the next row
         currentRow.forEach(node => {
-            // Find 1 or 2 closest nodes in the next row
             const sortedNextNodes = [...nextRow].sort((a, b) => Math.abs(a.x - node.x) - Math.abs(b.x - node.x));
             const connectionsCount = Math.random() < 0.3 ? 2 : 1;
             for (let k = 0; k < Math.min(connectionsCount, sortedNextNodes.length); k++) {
@@ -100,7 +168,6 @@ export function generateMapData(layer = 0, rowsPerLayer = 8, paths = 5) {
             }
         });
         
-        // Ensure every node in the next row has at least one incoming connection
         nextRow.forEach(nextNode => {
             if (nextNode.incoming_connections.length === 0) {
                  const sortedCurrentNodes = [...currentRow].sort((a, b) => Math.abs(a.x - nextNode.x) - Math.abs(b.x - nextNode.x));
@@ -115,6 +182,30 @@ export function generateMapData(layer = 0, rowsPerLayer = 8, paths = 5) {
             }
         });
     }
+
+    // 4. Ensure all paths to boss have at least one elite
+    ensureElitesOnAllPaths(map.nodes, map.paths);
+
+    // 5. Cap the number of elites to a maximum of 6
+    const MAX_ELITES = 6;
+    const eliteNodes = map.nodes.filter(n => n.type === NODE_TYPES.ELITE);
+    if (eliteNodes.length > MAX_ELITES) {
+        const shuffledElites = shuffle(eliteNodes);
+        for (let i = 0; i < shuffledElites.length - MAX_ELITES; i++) {
+            shuffledElites[i].type = NODE_TYPES.ENEMY;
+        }
+    }
+
+    // 6. Generate Secret Rooms (does not affect visual connections)
+    const secret_nodes = [];
+    map.nodes.forEach(node => {
+        // A node can't have both. Check for super hidden first due to its stricter condition.
+        if (node.connections.length >= 4 && Math.random() < 0.20) {
+            secret_nodes.push({ attached_to_node_id: node.id, type: 'super_hidden' });
+        } else if (Math.random() < 0.05) {
+            secret_nodes.push({ attached_to_node_id: node.id, type: 'hidden' });
+        }
+    });
     
     // Clean up temporary helper property
     map.nodes.forEach(node => delete node.incoming_connections);
@@ -125,5 +216,7 @@ export function generateMapData(layer = 0, rowsPerLayer = 8, paths = 5) {
         path_taken: [],
         mapLayer: layer,
         bossDefeated: false,
+        secret_nodes: secret_nodes,
+        searched_nodes: [], // Initialize for tracking secret room searches
     };
 }

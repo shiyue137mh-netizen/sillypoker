@@ -15,7 +15,7 @@ import { AIGame_MapHandler } from './mapHandler.js';
 import { AIGame_ItemHandler } from './itemHandler.js';
 
 
-let SillyTavern_Context_API, TavernHelper_API, toastr_API, UI, parentWin;
+let SillyTavern_Context_API, TavernHelper_API, toastr_API, UI, parentWin, AudioManager_API;
 
 // Sub-handler instances
 let GameHandler, EntityHandler, MapHandler, ItemHandler;
@@ -94,24 +94,39 @@ async function updateWorldbook(entryName, updaterFn) {
         Logger.error(`Cannot update entry "${entryName}": world book not available.`);
         return;
     }
+
     await TavernHelper_API.updateWorldbookWith(lorebookName, (entries) => {
         const entryIndex = entries.findIndex(e => e.name === entryName);
         if (entryIndex === -1) {
             Logger.error(`Entry "${entryName}" not found in lorebook "${lorebookName}".`);
-            return entries;
+            return entries; // Return original array on error
         }
-        let content;
+        
+        // Find the original template to ensure fields like 'comment' are preserved.
+        const templateEntry = AIGame_Config.INITIAL_LOREBOOK_ENTRIES.find(e => e.name === entryName);
+        const templateContent = templateEntry ? JSON.parse(templateEntry.content || '{}') : {};
+
+        const originalEntry = entries[entryIndex];
+        let currentContent;
         try {
-            content = JSON.parse(entries[entryIndex].content || '{}');
+            currentContent = JSON.parse(originalEntry.content || '{}');
         } catch (e) {
-            Logger.warn(`Failed to parse JSON for entry "${entryName}", using empty object.`, e);
-            content = {};
+            Logger.warn(`Failed to parse current JSON for entry "${entryName}", using empty object.`, e, `Content was: "${originalEntry.content}"`);
+            currentContent = {};
         }
-        const newContent = updaterFn(content);
+
+        // Merge template with current content to ensure no fields are lost.
+        const mergedContent = { ...templateContent, ...currentContent };
+        
+        const newContent = updaterFn(mergedContent);
+
+        // Update only the 'content' field of the entry.
         entries[entryIndex].content = JSON.stringify(newContent, null, 2);
+
         return entries;
     });
 }
+
 
 async function fetchAllGameData() {
     const lorebookName = await getOrCreateGameLorebook();
@@ -138,7 +153,12 @@ async function fetchAllGameData() {
     } catch (e) {
         Logger.error("Failed to fetch all game data:", e);
     }
-    UI.renderPanelContent();
+    
+    // FIX: Only render if the panel is actually visible to the user.
+    // This prevents animations (like dealing cards) from running on hidden elements.
+    if (AIGame_State.isPanelVisible) {
+        UI.renderPanelContent();
+    }
 }
 
 async function mainProcessor(text) {
@@ -172,13 +192,172 @@ async function mainProcessor(text) {
     Logger.log('--- [mainProcessor END] ---');
 }
 
+async function deleteCardFromUI({ location, enemyName, cardIndex }) {
+    Logger.log(`Admin requested to delete card from UI:`, { location, enemyName, cardIndex });
+
+    let fileToUpdate;
+    let updaterFn;
+    let cardIdentifier = '';
+
+    switch (location) {
+        case 'player_hand':
+            fileToUpdate = 'sp_player_cards';
+            updaterFn = data => {
+                if (data?.current_hand?.[cardIndex]) {
+                    const removed = data.current_hand.splice(cardIndex, 1);
+                    cardIdentifier = `[${removed[0].suit}${removed[0].rank}] from player hand`;
+                }
+                return data;
+            };
+            break;
+        
+        case 'enemy_hand':
+            if (!enemyName) {
+                Logger.error('Cannot delete enemy card without enemy name.');
+                toastr_API.error("删除失败：未指定敌人名称。");
+                return;
+            }
+            fileToUpdate = 'sp_enemy_data';
+            updaterFn = data => {
+                const enemy = data.enemies?.find(e => e.name === enemyName);
+                if (enemy?.hand?.[cardIndex]) {
+                    const removed = enemy.hand.splice(cardIndex, 1);
+                    cardIdentifier = `[${removed[0].suit}${removed[0].rank}] from ${enemyName}'s hand`;
+                }
+                return data;
+            };
+            break;
+
+        case 'board':
+            fileToUpdate = 'sp_game_state';
+            updaterFn = data => {
+                if (data?.board_cards?.[cardIndex]) {
+                    const removed = data.board_cards.splice(cardIndex, 1);
+                    cardIdentifier = `[${removed[0].suit}${removed[0].rank}] from the board`;
+                }
+                return data;
+            };
+            break;
+
+        default:
+            Logger.error(`Unknown location for card deletion: ${location}`);
+            toastr_API.error(`删除失败：未知的位置 "${location}"。`);
+            return;
+    }
+
+    await updateWorldbook(fileToUpdate, updaterFn);
+
+    if (cardIdentifier) {
+        Logger.success(`Card removed from state: ${cardIdentifier}`);
+        toastr_API.success(`卡牌 ${cardIdentifier} 已被删除。`);
+    } else {
+        Logger.warn(`Could not find card to delete at location:`, { location, enemyName, cardIndex });
+        toastr_API.error("无法删除卡牌，请重试。");
+    }
+
+    await fetchAllGameData();
+}
+
+async function surrender() {
+    Logger.log('Player surrenders...');
+    const prompt = `(系统提示：{{user}}决定放弃当前的挑战。)`;
+    toastr_API.info("你选择了放弃...等待对手的回应。");
+    await TavernHelper_API.triggerSlash(`/setinput ${JSON.stringify(prompt)}`);
+    SillyTavern_Context_API.generate();
+}
+
+async function begForMercy() {
+    Logger.log('Player begs for mercy...');
+    const prompt = `(系统提示：{{user}}向对手求饶，希望能保留一些颜面。)`;
+    toastr_API.info("你开始求饶...你的命运掌握在对手手中。");
+    await TavernHelper_API.triggerSlash(`/setinput ${JSON.stringify(prompt)}`);
+    SillyTavern_Context_API.generate();
+}
+
+async function processPendingDealActions() {
+    const actions = AIGame_State.currentGameState?.pending_deal_actions;
+    if (!actions || actions.length === 0) return;
+
+    toastr_API.info("荷官正在发牌...", "发牌");
+    Logger.log('Processing pending deal actions...');
+
+    const totalCardsNeeded = actions.reduce((sum, action) => sum + (action.count || 0), 0);
+    if (totalCardsNeeded === 0) return;
+
+    AudioManager_API.playStaggered('deal', totalCardsNeeded, 120);
+
+    let drawnCards = [];
+    await updateWorldbook('sp_private_data', (privateData) => {
+        const deck = privateData.deck || [];
+        if (deck.length < totalCardsNeeded) {
+            Logger.error(`Not enough cards in deck. Need ${totalCardsNeeded}, have ${deck.length}.`);
+            drawnCards = [];
+            return privateData;
+        }
+        drawnCards = deck.splice(0, totalCardsNeeded);
+        privateData.deck = deck;
+        return privateData;
+    });
+
+    if (drawnCards.length < totalCardsNeeded) {
+        toastr_API.error("牌堆里的牌不够！");
+        return;
+    }
+
+    const distribution = { player: [], board: [], enemies: {} };
+    (AIGame_State.enemyData?.enemies || []).forEach(enemy => {
+        distribution.enemies[enemy.name] = [];
+    });
+
+    for (const action of actions) {
+        if (!action.count || action.count <= 0) continue;
+        const cardsToDistribute = drawnCards.splice(0, action.count);
+        cardsToDistribute.forEach(card => { card.visibility = action.visibility || 'owner'; });
+
+        if (action.target === 'player') distribution.player.push(...cardsToDistribute);
+        else if (action.target === 'enemy' && action.name && distribution.enemies[action.name]) distribution.enemies[action.name].push(...cardsToDistribute);
+        else if (action.target === 'board') distribution.board.push(...cardsToDistribute);
+    }
+
+    if (distribution.player.length > 0) await updateWorldbook('sp_player_cards', data => ({ ...data, current_hand: [...(data.current_hand || []), ...distribution.player] }));
+    if (Object.values(distribution.enemies).some(c => c.length > 0)) {
+        await updateWorldbook('sp_enemy_data', data => {
+            if (!data.enemies) data.enemies = [];
+            data.enemies.forEach(enemy => {
+                if (distribution.enemies[enemy.name]?.length > 0) {
+                    enemy.hand = [...(enemy.hand || []), ...distribution.enemies[enemy.name]];
+                }
+            });
+            return data;
+        });
+    }
+    if (distribution.board.length > 0) {
+        await updateWorldbook('sp_game_state', data => ({ 
+            ...data, 
+            board_cards: [...(data.board_cards || []), ...distribution.board],
+            last_bet_amount: 0
+        }));
+    }
+
+    // Clear the pending actions
+    await updateWorldbook('sp_game_state', data => {
+        delete data.pending_deal_actions;
+        return data;
+    });
+    
+    // Finally, refresh the state and UI
+    await fetchAllGameData();
+}
+
+
 export const AIGame_DataHandler = {
-    init: function(deps, uiHandler) {
+    init: function(deps, uiHandler, audioManager) {
         SillyTavern_Context_API = deps.st_context;
         TavernHelper_API = deps.th;
         toastr_API = deps.toastr;
         UI = uiHandler;
         parentWin = deps.win;
+        AudioManager_API = audioManager;
 
         const handlerContext = {
             updateWorldbook,
@@ -189,6 +368,7 @@ export const AIGame_DataHandler = {
             getOrCreateGameLorebook,
             UI,
             parentWin,
+            AudioManager_API,
         };
         
         GameHandler = AIGame_GameHandler;
@@ -204,6 +384,10 @@ export const AIGame_DataHandler = {
 
     mainProcessor,
     fetchAllGameData,
+    deleteCardFromUI,
+    surrender,
+    begForMercy,
+    processPendingDealActions,
     
     clearLorebookCache() {
         currentCharacterLorebookName = null;
@@ -250,6 +434,9 @@ export const AIGame_DataHandler = {
         
         toastr_API.success(`新的挑战已开始！难度：${settings.name}`);
         AIGame_State.currentActiveTab = 'map';
+        
+        AudioManager_API.startBGMPlaylist(); // Start BGM when run begins
+        
         await fetchAllGameData();
     },
 
@@ -271,6 +458,7 @@ export const AIGame_DataHandler = {
     },
     
     async advanceToNextFloor() {
+        AudioManager_API.play('elevator_ding');
         const currentLayer = AIGame_State.mapData?.mapLayer ?? 0;
         const nextLayer = currentLayer + 1;
         Logger.log(`Advancing to next floor: ${nextLayer}`);
@@ -290,8 +478,11 @@ export const AIGame_DataHandler = {
     // Delegate to sub-handlers
     saveMapData: () => MapHandler.saveMapData(),
     travelToNode: (nodeId, nodeType) => MapHandler.travelToNode(nodeId, nodeType),
+    findSecretRoom: () => MapHandler.findSecretRoom(),
     useItem: (itemIndex) => ItemHandler.useItem(itemIndex),
     stagePlayerAction: (action) => GameHandler.stagePlayerAction(action),
+    undoStagedAction: (actionId) => GameHandler.undoStagedAction(actionId),
+    undoAllStagedActions: () => GameHandler.undoAllStagedActions(),
     commitStagedActions: () => GameHandler.commitStagedActions(),
     attemptEscape: () => GameHandler.attemptEscape(),
 };

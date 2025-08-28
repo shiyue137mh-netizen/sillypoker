@@ -1,8 +1,9 @@
 
 
+
 /**
  * AI Card Table Extension for SillyTavern - Main Entry Point
- * @version 8.3.0
+ * @version 8.4.0
  * This script now uses ES6 modules, mirroring the phone simulator's architecture.
  */
 'use strict';
@@ -13,6 +14,7 @@ import { AIGame_State } from './modules/state.js';
 import { AIGame_Events } from './modules/events.js';
 import { Logger } from './modules/logger.js';
 import { AudioManager } from './modules/audioManager.js';
+import { initRenderer } from './modules/gameRenderer.js';
 
 // --- Top-level module scope variables ---
 const parentWin = window.parent;
@@ -68,7 +70,8 @@ async function mainInitialize() {
 
     AIGame_State.init(parentWin);
     AudioManager.init(dependencies); // Initialize AudioManager
-    AIGame_DataHandler.init(dependencies, AIGame_UI);
+    initRenderer(dependencies); // Initialize the renderer with dependencies
+    AIGame_DataHandler.init(dependencies, AIGame_UI, AudioManager);
     AIGame_UI.init(dependencies, AIGame_DataHandler);
     AIGame_Events.init(dependencies, AIGame_DataHandler, AIGame_UI);
     

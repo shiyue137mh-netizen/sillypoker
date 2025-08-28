@@ -7,9 +7,18 @@ let parentWindow;
 export const AIGame_State = {
     isPanelVisible: false,
     hasGameBook: false,
-    runInProgress: false, // NEW: Tracks if a Roguelike run is active
+    runInProgress: false, // NEW: Tracks if a Rogelike run is active
     currentActiveTab: 'map', // Default to map view
     isInventoryVisible: false,
+    isMuted: false, // Tracks SFX mute state
+
+    // BGM State
+    isBgmPlaying: false,
+    currentBgmTrackIndex: 0,
+    bgmVolume: 0.3,
+
+    // Tutorial Hint
+    currentHint: null,
 
     // Game-specific state
     playerData: null,

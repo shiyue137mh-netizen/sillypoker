@@ -1,6 +1,7 @@
 
 @import url('styles/base.css');
 @import url('styles/game.css');
+@import url('styles/cards.css');
 @import url('styles/map.css');
 @import url('styles/player_status.css');
 @import url('styles/rules.css');

@@ -12,10 +12,10 @@
 
 - **`sillypoker_player_data.json`**: (角色可见) 存储玩家的公开状态，如生命值、筹码、道具等。
 - **`sillypoker_enemy_data.json`**: (角色可见) 存储当前对手的公开状态，在每次遭遇新敌人时由`[Game:Start]`指令进行初始化。
-- **`sillypoker_player_cards.json`**: (角色不可见) 存储玩家的私密信息，主要是手牌。由主控（前端脚本）更新。
+- **`sillypoker_player_cards.json`**: (角色可见) 存储玩家的手牌，但具体卡牌的可见性由`visibility`属性控制。
 - **`sillypoker_map_data.json`**: (角色不可见) 存储当前Roguelike地图的结构和玩家位置。
 - **`sillypoker_current_game_state.json`**: (角色可见) **[核心]** 这是一个至关重要的临时状态条目。它存储当前牌局的**所有**公共信息，包括游戏规则、**公共牌(board_cards)**、彩池金额、当前轮到谁行动等。角色将主要读取此文件来做决策。
-- **`sillypoker_private_game_data.json`**: (角色不可见) **[核心]** 主控的私有领域，用于存放**牌堆(deck)**等不应被角色看到的私有游戏数据。
+- **`sillypoker_private_data.json`**: (角色不可见) **[核心]** 主控的私有领域，用于存放**牌堆(deck)**等不应被角色看到的私有游戏数据。
 
 ## 3.0 游戏流程详解 (Detailed Game Flow)
 
@@ -36,8 +36,8 @@
     *   **角色输出指令**: `[Game:Function, type:发牌, data:{"actions":[{"target":"all", "count":2, "visibility":"owner"}]}]`
     *   **主控职责 (前端)**:
         1.  **响应请求**: 接收到发牌请求。
-        2.  **执行逻辑**: 从`sillypoker_private_game_data.json`中的私有牌堆顶部分发卡牌。
-        3.  **原子化更新**: 一次性地更新`sillypoker_player_cards.json`(玩家手牌), `sillypoker_enemy_data.json`(敌人手牌), 和`sillypoker_private_game_data.json`(剩余牌堆)。
+        2.  **执行逻辑**: 从`sillypoker_private_data.json`中的私有牌堆顶部分发卡牌。
+        3.  **原子化更新**: 一次性地更新`sillypoker_player_cards.json`(玩家手牌), `sillypoker_enemy_data.json`(敌人手牌), 和`sillypoker_private_data.json`(剩余牌堆)。
         4.  **重新渲染**: UI根据更新后的世界书和`visibility`属性，正确地显示玩家的明牌和敌人的牌背。
 
 4.  **角色的回合**
@@ -66,22 +66,22 @@
 #### 游戏管理 (Game Management)
 - **`[Game:Start, data:{...}]`**: 初始化一场遭遇/牌局。
   - **`data`**: `{ "game_type": "游戏类型", "players": ["玩家名", "敌人名"], "initial_state": { /* 敌人数据JSON */ } }`
-  - **主控职责**: 清理旧牌局，用`initial_state`更新`sillypoker_enemy_data.json`，初始化`sillypoker_current_game_state.json`，并在`sillypoker_private_game_data.json`中创建新牌堆。
+  - **主控职责**: 清理旧牌局，用`initial_state`更新`sillypoker_enemy_data.json`，初始化`sillypoker_current_game_state.json`，并在`sillypoker_private_data.json`中创建新牌堆。
 
 - **`[Game:Rule, data:{...}]`**: 定义一个自定义游戏规则。
   - **`data`**: `{ "rules": "规则描述", "win_condition": "获胜条件" }`
   - **主控职责**: 将规则文本存入`sillypoker_current_game_state.json`。
 
 - **`[Game:End, data:{...}]`**: 结束当前牌局。
-  - **`data`**: `{ "result": "win" | "lose" | "dead" | "escape", "reason": "结束原因描述" }`
+  - **`data`**: `{ "result": "win" | "lose" | "dead" | "escape" | "boss_win", "reason": "结束原因描述" }`
   - **主控职责**: 根据`result`更新玩家状态（如生命值），显示结算界面，然后返回地图。
 
 #### 游戏功能 (Game Functions)
 - **`[Game:Function, type:"发牌", data:{...}]`**: **请求**主控执行发牌逻辑。
   - **`data`**: `{ "actions": [ { "target": "...", "count": 数量, "visibility": "owner" | "hidden" | "public" }, ... ] }`
-  - **主控职责**: **接收请求并执行真正的随机发牌逻辑**，从私有牌堆发牌，并分别更新`sillypoker_player_cards.json`(手牌), `sillypoker_enemy_data.json`(手牌), `sillypoker_current_game_state.json`(公共牌)和`sillypoker_private_game_data.json`(剩余牌堆)。
+  - **主控职责**: **接收请求并执行真正的随机发牌逻辑**，从私有牌堆发牌，并分别更新`sillypoker_player_cards.json`(手牌), `sillypoker_enemy_data.json`(手牌), `sillypoker_current_game_state.json`(公共牌)和`sillypoker_private_data.json`(剩余牌堆)。
 
-- **`[Game:Function, type:"ModifyCard", data:{...}]`**: **请求**主控直接修改卡牌属性。
+- **`[Game:Function, type:"Modify", data:{...}]`**: **请求**主控直接修改卡牌属性。
   - **`data`**: `{ "targets": [ { "location": "...", "card_filter": {...}, "modifications": [...] } ] }`
   - **主控职责**: 解析指令，精确定位到一张或多张卡牌，并根据`modifications`数组修改其属性。这是一个强大的底层指令，用于实现各种特殊效果。
 

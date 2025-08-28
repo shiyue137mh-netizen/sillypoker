@@ -12,14 +12,59 @@
 
 ### 2. 庄家初始化牌局
 
+-   **角色响应**:
+
+    好的，牌桌已经准备好了。请下注。
+<command>
+    [Game:Start, data:{"game_type": "Blackjack", "players": ["{{user}}", "庄家"], "initial_state": { "name": "庄家", "play_style": "ByTheBook" }}]
+</command>
+
+### 3. 玩家下注并开始发牌
+
+-   **(前端发送)**: `(系统提示：玩家选择了“下注”，金额为100。)`
+
 -   **角色响应 (单次输出后停止)**:
 
-    好的，牌桌已经准备好了。我已向主控请求发牌，祝你好运！
-    [Game:Start, data:{"game_type": "Blackjack", "players": ["{{user}}", "庄家"], "initial_state": { "name": "庄家", "play_style": "ByTheBook" }}]
+    收到，下注100筹码。现在，我将为我们发牌，你会看到我的一张明牌。祝你好运！
+<command>
     [Game:Function, type:发牌, data:{"actions":[
       {"target":"player", "count":2, "visibility":"owner"},
-      {"target":"enemy", "name":"庄家", "count":2, "visibility":"hidden"}
+      {"target":"enemy", "name":"庄家", "count":1, "visibility":"public"},
+      {"target":"enemy", "name":"庄家", "count":1, "visibility":"hidden"}
     ]}]
+</command>
+
+### 4. 玩家的回合：要牌 (Hit)
+
+-   **(前端发送)**: `(系统提示：玩家选择了“要牌”。)`
+
+-   **角色响应 (单次输出后停止)**:
+
+    再给你一张牌。
+<command>
+    [Game:Function, type:发牌, data:{"actions":[
+      {"target":"player", "count":1, "visibility":"public"}
+    ]}]
+</command>
+
+### 5. 玩家的回合：停牌 (Stand)
+
+-   **(前端发送)**: `(系统提示：玩家选择了“停牌”。)`
+
+### 6. 庄家的回合与游戏结算
+
+-   **角色响应 (单次输出后停止)**:
+
+    你停牌了，现在轮到我了。我的底牌是...一张J，总点数16点，规则要求我必须继续要牌。
+    ...来了一张10，总点数26，我爆牌了。恭喜，你赢了这局。
+<command>
+    [Game:Function, type:Modify, data:{"targets":[{"location":"enemy_hand", "enemy_name":"庄家", "operation":"update", "card_filter":{"index":1}, "modifications":[{"field":"visibility", "operation":"set", "value":"public"}]}]}]
+    [Game:Function, type:发牌, data:{"actions":[
+      {"target":"enemy", "name":"庄家", "count":1, "visibility":"public"}
+    ]}]
+    [Game:End, data:{"result":"win", "reason":"庄家爆牌。"}]
+    [Event:Modify, data:{"target":"{{user}}", "modifications":[ {"field":"chips", "operation":"add", "value":200} ]}]
+</command>
 
 ---
 ## 示例二：德州扑克 (Texas Hold'em)
@@ -33,11 +78,99 @@
 -   **角色响应 (单次输出后停止)**:
 
     一个戴着兜帽的劫匪拦住了你的去路。“想过去？先在牌桌上赢了我再说。”
+<command>
     [Game:Start, data:{"game_type": "TexasHoldem", "players": ["{{user}}", "拦路劫匪"], "initial_state": { "name": "拦路劫匪", "play_style": "Aggressive", "chips": 800, "hand": [] }}]
     [Game:Function, type:发牌, data:{"actions":[
       {"target":"player", "count":2, "visibility":"owner"},
       {"target":"enemy", "name":"拦路劫匪", "count":2, "visibility":"hidden"}
     ]}]
+</command>
+
+### 3. 翻牌前下注轮 (Pre-flop)
+
+-   **角色响应 (单次输出后停止)**:
+
+    劫匪看了一眼自己的牌，然后不屑地将50筹码推了出来。“跟不跟？”
+<command>
+    [Action:Bet, data:{"player_name":"拦路劫匪", "amount":50}]
+</command>
+
+### 4. 玩家响应
+
+-   **(前端发送)**: `(系统提示：玩家选择了“跟注”。)`
+
+### 5. 翻牌轮 (Flop)
+
+-   **角色响应 (单次输出后停止)**:
+
+    “有点胆量。”劫匪说着，示意发牌。
+<command>
+    [Game:Function, type:发牌, data:{"actions":[
+        {"target":"board", "count":3, "visibility":"public"}
+    ]}]
+</command>
+
+### 6. 翻牌圈下注
+
+-   **(前端发送)**: `(系统提示：玩家选择了“过牌”。)`
+
+-   **角色响应 (单次输出后停止)**:
+
+    劫匪也敲了敲桌子表示过牌。
+<command>
+    [Action:Check, data:{"player_name":"拦路劫匪"}]
+</command>
+
+### 7. 转牌轮 (Turn)
+
+-   **角色响应 (单次输出后停止)**:
+
+    第四张公共牌来了。
+<command>
+    [Game:Function, type:发牌, data:{"actions":[
+        {"target":"board", "count":1, "visibility":"public"}
+    ]}]
+</command>
+
+### 8. 转牌圈下注与河牌圈
+
+-   **(前端发送)**: `(系统提示：玩家选择了“下注”，金额为200。)`
+
+-   **角色响应 (单次输出后停止)**:
+
+    劫匪思考片刻，跟注了。河牌发了出来。
+<command>
+    [Action:Call, data:{"player_name":"拦路劫匪"}]
+    [Game:Function, type:发牌, data:{"actions":[
+        {"target":"board", "count":1, "visibility":"public"}
+    ]}]
+</command>
+
+### 9. 河牌圈最终下注
+
+-   **(前端发送)**: `(系统提示：玩家选择了“下注”，金额为500。)`
+
+-   **角色响应 (单次输出后停止)**:
+
+    “就这么点？”劫匪冷笑一声，把他剩下的所有筹码都推了出去。“我全下了！”
+<command>
+    [Action:Bet, data:{"player_name":"拦路劫匪", "amount":550}]
+</command>
+
+### 10. 玩家最终决定
+
+-   **(前端发送)**: `(系统提示：玩家选择了“跟注”。)`
+
+### 11. 摊牌与结算
+
+-   **角色响应 (单次输出后停止)**:
+
+    劫匪亮出他的底牌，是一对K。但你的牌组成了顺子！“可恶！”劫匪愤怒地砸了一下桌子。你赢得了所有筹码。
+<command>
+    [Action:Showdown, data:{"player_name":"拦路劫匪"}]
+    [Game:End, data:{"result":"win", "reason":"你的顺子击败了对手的一对K。"}]
+    [Event:Modify, data:{"target":"{{user}}", "modifications":[ {"field":"chips", "operation":"add", "value":1600} ]}]
+</command>
 
 ---
 
@@ -56,6 +189,7 @@
 
 ```
 来一场极限对局吧！对手是赌圣、赌侠和赌神。游戏是四人斗地主。
+<command>
 [Game:Start, data:{"game_type": "DouDiZhu_4Player", "players": ["{{user}}", "赌圣", "赌侠", "赌神"], "initial_state": { "name": "AI Opponent", "play_style": "Unpredictable", "chips": 1000, "hand": [] }}]
 [Game:Function, type:发牌, data:{"actions":[
     {"target":"player", "count":25, "visibility":"owner"},
@@ -63,4 +197,5 @@
     {"target":"enemy", "name":"赌侠", "count":25, "visibility":"hidden"},
     {"target":"enemy", "name":"赌神", "count":25, "visibility":"hidden"}
 ]}]
+</command>
 ```

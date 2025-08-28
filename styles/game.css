@@ -1,27 +1,23 @@
+
+
 :root {
     --table-bg: #0a3d1e;
     --table-border: #5a3825;
     --felt-green: #106f38;
-    --card-bg: #f8f8f8;
-    --card-border: #ccc;
     --text-light: #e0e0e0;
-    --text-dark: #222;
-    --red-suit: #d93025;
-    --black-suit: #202124;
     --gold-accent: #f9a825;
-    --special-glow: 0 0 12px rgba(249, 168, 37, 0.8);
-    --revealed-glow-color: #4ade80; /* Bright Green */
 }
 
-@keyframes card-entry-animation {
-    from {
-        transform: translateY(30px) scale(0.9);
-        opacity: 0;
-    }
-    to {
-        transform: translateY(0) scale(1);
-        opacity: 1;
-    }
+@keyframes breathing-glow {
+    0% { filter: drop-shadow(0 0 8px rgba(249, 168, 37, 0.4)); }
+    50% { filter: drop-shadow(0 0 16px rgba(249, 168, 37, 0.8)); }
+    100% { filter: drop-shadow(0 0 8px rgba(249, 168, 37, 0.4)); }
+}
+
+@keyframes pot-win-glow {
+    0% { box-shadow: 0 0 10px 2px rgba(255, 215, 0, 0.2); transform: scale(1); }
+    50% { box-shadow: 0 0 25px 8px rgba(255, 215, 0, 0.7); transform: scale(1.05); }
+    100% { box-shadow: 0 0 10px 2px rgba(255, 215, 0, 0.2); transform: scale(1); }
 }
 
 
@@ -54,8 +50,7 @@
     box-shadow: inset 0 0 15px rgba(0,0,0,0.4); 
 }
 
-/* --- New Positional Layout System --- */
-
+/* --- Positional Layout System --- */
 #sillypoker-panel .board-area-container {
     position: absolute;
     top: 50%;
@@ -63,25 +58,42 @@
     transform: translate(-50%, -50%);
     z-index: 2;
     display: flex;
-    flex-direction: row; /* MODIFIED: Place pot and cards side-by-side */
-    align-items: center; /* Vertically align them */
-    justify-content: center; /* Center the pot+cards group */
-    gap: 25px; /* Increased gap */
-    width: 80%;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    width: auto;
+    max-width: 80%;
 }
 
 #sillypoker-panel .player-position-container {
     position: absolute;
     padding: 5px;
     border-radius: 12px;
-    transition: filter 0.3s ease-in-out;
-    display: flex; /* Make container flexible */
+    transition: filter 0.3s ease-in-out, transform 0.4s ease;
+    display: flex; 
     justify-content: center;
     align-items: center;
+    z-index: 10; 
 }
 #sillypoker-panel .player-position-container.active-turn {
-    filter: drop-shadow(0 0 10px rgba(249, 168, 37, 0.7));
-    z-index: 5;
+    animation: breathing-glow 2.5s infinite ease-in-out;
+    z-index: 15; 
+}
+
+#sillypoker-panel .game-table.turn-active .player-position-container:not(.active-turn) {
+    transform: scale(0.95);
+}
+#sillypoker-panel .game-table.turn-active .player-position-container.position-bottom:not(.active-turn) {
+     transform: scale(0.95) translateX(-50%);
+}
+#sillypoker-panel .game-table.turn-active .player-position-container.position-top:not(.active-turn) {
+     transform: scale(0.95) translateX(-50%);
+}
+#sillypoker-panel .game-table.turn-active .player-position-container.position-left:not(.active-turn) {
+     transform: scale(0.95) translateY(-50%);
+}
+#sillypoker-panel .game-table.turn-active .player-position-container.position-right:not(.active-turn) {
+     transform: scale(0.95) translateY(-50%);
 }
 
 #sillypoker-panel .position-bottom {
@@ -104,7 +116,6 @@
     left: 50%;
     transform: translateX(-50%);
 }
-
 #sillypoker-panel .position-left {
     left: 10px;
     top: 50%;
@@ -140,7 +151,7 @@
     text-align: center;
     color: var(--text-light);
     position: relative;
-    z-index: 20; /* FIX: Ensure name is always above cards */
+    z-index: 20; 
 }
 
 #sillypoker-panel .opponent-name { 
@@ -158,7 +169,7 @@
 }
 #sillypoker-panel .action-buttons button { 
     background: linear-gradient(145deg, #ffb74d, #f9a825);
-    color: var(--text-dark); 
+    color: #222; 
     border: none;
     border-radius: 8px; 
     padding: 10px 20px; 
@@ -172,6 +183,7 @@
 #sillypoker-panel .action-buttons button:hover:not(:disabled) { 
     transform: translateY(-2px); 
     box-shadow: 0 4px 8px rgba(0,0,0,0.3), inset 0 -2px 1px rgba(0,0,0,0.1);
+    filter: brightness(1.1) drop-shadow(0 2px 8px rgba(249, 168, 37, 0.5));
 }
 #sillypoker-panel .action-buttons button:active:not(:disabled) {
     transform: translateY(1px);
@@ -184,122 +196,7 @@
     box-shadow: 0 2px 5px rgba(0,0,0,0.2);
     opacity: 0.6;
 }
-#sillypoker-panel .hand { 
-    display: flex; 
-    justify-content: center;
-}
 
-/* Card density adjustments - Using less dense values with the working animation logic */
-#sillypoker-panel .horizontal-hand {
-    flex-direction: row;
-    padding-left: 40px; /* Add padding to compensate for negative margin */
-}
-#sillypoker-panel .horizontal-hand > .card {
-    margin-left: -40px; /* Less overlap */
-}
-#sillypoker-panel .opponent-container .horizontal-hand {
-     padding-left: 55px;
-}
-#sillypoker-panel .opponent-container .horizontal-hand > .card {
-    margin-left: -55px; /* Less overlap for opponents */
-}
-
-#sillypoker-panel .vertical-hand {
-    flex-direction: column;
-    width: 100px;
-    align-items: center;
-    padding-top: 80px; /* Add padding to compensate */
-}
-#sillypoker-panel .vertical-hand > .card {
-    margin-top: -80px; /* Less overlap */
-}
-
-/* Working animation logic from user's example */
-#sillypoker-panel .player-position-container .card { 
-    transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
-    cursor: pointer;
-}
-#sillypoker-panel .player-position-container .card:hover { 
-    transform: translateY(-15px) scale(1.05); 
-    z-index: 10;
-}
-
-#sillypoker-panel .card { 
-    width: 80px;
-    height: 112px;
-    background: var(--card-bg); 
-    border: 1px solid var(--card-border); 
-    border-radius: 6px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.2); 
-    position: relative; 
-    padding: 8px;
-    box-sizing: border-box; 
-    display: flex; 
-    flex-direction: column; 
-    justify-content: space-between; 
-    font-family: 'Playfair Display', serif; 
-    font-size: 2rem;
-    font-weight: 700; 
-    user-select: none; 
-    opacity: 0;
-    animation: card-entry-animation 0.5s cubic-bezier(0.25, 1, 0.5, 1) forwards;
-    animation-delay: var(--animation-delay, 0s);
-}
-
-/* Enhanced .selected style for clear visual feedback from user's example */
-#sillypoker-panel .card.selected {
-    box-shadow: 0 0 15px var(--gold-accent), 0 5px 15px rgba(0,0,0,0.4);
-    border-color: var(--gold-accent);
-    transform: translateY(-25px) scale(1.08) !important; /* Use !important to override hover */
-    z-index: 15;
-}
-#sillypoker-panel .card.selected:hover {
-    transform: translateY(-30px) scale(1.1) !important; /* Further lift on hover */
-    z-index: 16;
-}
-
-/* STYLES FOR LARGE HANDS (e.g., Dou Dizhu) */
-#sillypoker-panel .horizontal-hand.large-hand > .card {
-    margin-left: -50px; /* More overlap for large hands, but still visible */
-}
-#sillypoker-panel .vertical-hand.large-hand > .card {
-    margin-top: -80px; /* More overlap for large hands, but still visible */
-}
-#sillypoker-panel .large-hand .card {
-    width: 70px;
-    height: 98px;
-    font-size: 1.6rem;
-}
-
-#sillypoker-panel .card.special { 
-    box-shadow: var(--special-glow); 
-    border: 1px solid var(--gold-accent); 
-}
-#sillypoker-panel .card.card-back { 
-    background-image: linear-gradient(135deg, #667eea 0%, #764ba2 100%), linear-gradient(45deg, rgba(255,255,255,0.1) 25%, transparent 25%, transparent 50%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.1) 75%, transparent 75%, transparent); 
-    background-size: cover, 40px 40px; 
-    border: 1px solid #4a3a6b; 
-}
-#sillypoker-panel .card.card-back .card-rank, #sillypoker-panel .card.card-back .card-suit { 
-    display: none; 
-}
-#sillypoker-panel .card-rank { 
-    position: absolute; 
-    top: 5px; 
-    left: 8px;
-}
-#sillypoker-panel .card-suit { 
-    position: absolute; 
-    bottom: 5px; 
-    right: 8px;
-    font-size: 1.6rem;
-}
-#sillypoker-panel .card[data-suit="♥"], #sillypoker-panel .card[data-suit="♦"] { 
-    color: var(--red-suit); 
-}
-#sillypoker-panel .card[data-suit="♠"], #sillypoker-panel .card[data-suit="♣"] { 
-    color: var(--black-suit); 
-}
 #sillypoker-panel .deck-placeholder {
     position: absolute;
     top: 50%;
@@ -326,6 +223,11 @@
     padding: 10px 20px;
     border-radius: 10px;
     min-width: 120px;
+    transition: box-shadow 0.3s, transform 0.3s;
+    flex-shrink: 0;
+}
+#sillypoker-panel .pot.win-glow {
+    animation: pot-win-glow 1.5s ease-in-out;
 }
 #sillypoker-panel .pot-amount { 
     font-size: 2rem; 
@@ -335,39 +237,10 @@
 }
 #sillypoker-panel .community-cards {
     display: flex;
-    justify-content: flex-start; /* MODIFIED: Align cards from left (center) to right */
+    justify-content: center;
     align-items: center;
-    min-height: 100px; /* Ensure space for cards */
-}
-/* FIX: Community cards now use horizontal-hand logic */
-#sillypoker-panel .community-cards .card {
-    width: 70px;
-    height: 98px;
-    font-size: 1.8rem;
-}
-#sillypoker-panel .community-cards .card .card-suit {
-    font-size: 1.3rem;
-}
-#sillypoker-panel .card.player-hidden {
-    filter: brightness(0.7);
-    position: relative;
-}
-
-#sillypoker-panel .card.player-hidden::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.3);
-    border-radius: 6px;
-    pointer-events: none;
-}
-
-#sillypoker-panel .card.revealed {
-    border-color: var(--revealed-glow-color);
-    box-shadow: 0 0 15px rgba(74, 222, 128, 0.7), 0 5px 15px rgba(0,0,0,0.4);
+    min-height: 100px; 
+    margin-left: 40px; /* ROBUST FIX: Enforce a hard margin */
 }
 
 #sillypoker-panel .custom-wagers-area {
@@ -385,4 +258,70 @@
 #sillypoker-panel .custom-wager-item strong {
     color: var(--gold-accent);
     font-weight: 500;
+}
+
+
+/* --- Staged Actions UI --- */
+#sillypoker-panel .staged-actions-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    margin-top: -5px; /* Pull it closer to the cards */
+    margin-bottom: 5px; /* Push buttons down */
+    min-height: 30px; /* Reserve space to prevent layout shifts */
+}
+
+#sillypoker-panel .staged-action-item {
+    display: inline-flex;
+    align-items: center;
+    background-color: rgba(17, 24, 39, 0.7);
+    color: #d1d5db;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    border: 1px solid #4b5563;
+}
+
+#sillypoker-panel .undo-action-btn {
+    background: none;
+    border: none;
+    color: #9ca3af;
+    font-size: 1.1rem;
+    margin-left: 6px;
+    cursor: pointer;
+    padding: 0 4px;
+    line-height: 1;
+    transition: color 0.2s;
+}
+
+#sillypoker-panel .undo-action-btn:hover {
+    color: #ef4444;
+}
+
+/* --- Hint Bubble --- */
+@keyframes hint-pulse {
+    0% { opacity: 1; box-shadow: 0 0 6px rgba(74, 222, 128, 0.3); }
+    50% { opacity: 0.9; box-shadow: 0 0 14px rgba(74, 222, 128, 0.6); }
+    100% { opacity: 1; box-shadow: 0 0 6px rgba(74, 222, 128, 0.3); }
+}
+
+#sillypoker-panel .game-hint-bubble {
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: fit-content;
+    max-width: 75%;
+    padding: 10px 18px;
+    background-color: rgba(17, 24, 39, 0.9);
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(74, 222, 128, 0.7);
+    border-radius: 12px;
+    color: var(--text-light);
+    font-size: 0.85rem;
+    text-align: center;
+    z-index: 50;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+    animation: hint-pulse 3.5s infinite ease-in-out;
 }

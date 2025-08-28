@@ -1,3 +1,5 @@
+
+
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Roboto:wght@400;500&display=swap');
 @import url("https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css");
 
@@ -10,6 +12,14 @@
     --button-primary: #4f46e5;
     --button-primary-hover: #4338ca;
     --content-bg: #1f2937;
+}
+
+@keyframes panel-shake-flash {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+    20%, 40%, 60%, 80% { transform: translateX(5px); }
+    0%, 50%, 100% { box-shadow: 0 10px 30px rgba(0,0,0,0.4); }
+    25%, 75% { box-shadow: 0 0 20px 5px rgba(239, 68, 68, 0.7); }
 }
 
 #sillypoker-toggle-btn {
@@ -56,12 +66,15 @@
 #sillypoker-panel.hidden {
     display: none;
 }
+#sillypoker-panel.shake-flash {
+    animation: panel-shake-flash 0.8s ease-in-out;
+}
 #sillypoker-panel .sillypoker-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0 16px;
-    height: 48px;
+    padding: 8px 16px;
+    min-height: 48px;
     background: var(--header-bg);
     border-bottom: 1px solid var(--border-color);
     flex-shrink: 0;
@@ -75,6 +88,7 @@
 }
 #sillypoker-panel .header-left-icons {
     gap: 16px; /* Increased gap for HUD */
+    flex-wrap: wrap; /* Allow wrapping */
 }
 #sillypoker-panel .header-right-icons {
     cursor: default;
@@ -93,7 +107,7 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    transition: background-color 0.2s ease;
+    transition: background-color 0.2s ease, transform 0.1s ease;
 }
 #sillypoker-panel .sillypoker-header-btn:hover {
     background-color: rgba(255,255,255,0.1);
@@ -136,7 +150,7 @@
     border-radius: 6px;
     cursor: pointer;
     margin-top: 15px;
-    transition: background-color 0.2s;
+    transition: background-color 0.2s, transform 0.1s ease;
 }
 #sillypoker-panel .sillypoker-create-book-btn:hover {
     background: var(--button-primary-hover);
@@ -177,8 +191,8 @@
 #sillypoker-panel .sillypoker-tab-content-wrapper {
     flex-grow: 1;
     position: relative; /* For positioning tab content */
-    display: flex; /* Make it a flex container */
-    flex-direction: column; /* Stack children vertically */
+    display: flex; 
+    flex-direction: column; 
 }
 #sillypoker-panel .sillypoker-tab-content {
     position: absolute;
@@ -187,22 +201,32 @@
     width: 100%;
     height: 100%;
     opacity: 0;
-    visibility: hidden;
-    transition: opacity 0.3s ease, visibility 0.3s ease;
-    display: flex; /* Children will be managed by flex */
+    pointer-events: none;
+    transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+    transform: translateY(10px);
+    display: flex;
     flex-direction: column;
 }
 #sillypoker-panel .sillypoker-tab-content.active {
     opacity: 1;
-    visibility: visible;
-    position: static; /* Let it participate in the flex flow */
-    flex-grow: 1;
+    pointer-events: auto;
+    transform: translateY(0);
 }
-#sillypoker-panel .sillypoker-commit-btn {
+#sillypoker-panel .sillypoker-commit-area {
     position: absolute;
     bottom: 20px;
     left: 50%;
     transform: translateX(-50%);
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    z-index: 100;
+}
+#sillypoker-panel .sillypoker-commit-area.hidden {
+    display: none;
+}
+#sillypoker-panel .sillypoker-commit-btn-primary {
+    position: relative; /* ADDED: For badge positioning */
     width: 50px;
     height: 50px;
     background: var(--button-primary);
@@ -216,20 +240,16 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 100;
 }
-#sillypoker-panel .sillypoker-commit-btn.hidden {
-    display: none;
-}
-#sillypoker-panel .sillypoker-commit-btn:hover {
-    transform: translateX(-50%) scale(1.1);
+#sillypoker-panel .sillypoker-commit-btn-primary:hover {
+    transform: scale(1.1);
     background: var(--button-primary-hover);
 }
-#sillypoker-panel .sillypoker-commit-btn::after {
+#sillypoker-panel .sillypoker-commit-btn-primary::after {
     content: attr(data-count);
     position: absolute;
     top: -5px;
-    right: -5px;
+    right: -8px; /* MODIFIED: Corrected position */
     background-color: #ef4444;
     color: white;
     border-radius: 50%;
@@ -242,6 +262,27 @@
     justify-content: center;
     border: 2px solid var(--content-bg);
 }
+
+#sillypoker-panel .sillypoker-commit-btn-secondary {
+    width: 40px;
+    height: 40px;
+    background: #4b5563;
+    color: #d1d5db;
+    border: none;
+    border-radius: 50%;
+    font-size: 16px;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+#sillypoker-panel .sillypoker-commit-btn-secondary:hover {
+    background: #6b7280;
+    transform: scale(1.1);
+}
+
 
 /* Difficulty Selection Styles */
 #sillypoker-panel .difficulty-selection-container {
@@ -314,6 +355,8 @@
     flex-direction: column;
     gap: 20px;
     box-sizing: border-box;
+    max-width: 650px;
+    margin: 0 auto;
 }
 
 #sillypoker-panel .settings-title {
@@ -338,6 +381,8 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
 }
 
 #sillypoker-panel .settings-option-text h4 {
@@ -360,10 +405,111 @@
     padding: 8px 16px;
     border-radius: 6px;
     cursor: pointer;
-    transition: background-color 0.2s;
+    transition: background-color 0.2s, transform 0.1s ease;
     font-weight: 500;
 }
 
 #sillypoker-panel .sillypoker-btn-danger:hover:not(:disabled) {
     background: #b91c1c;
+}
+
+/* ADDED: Audio Toggle Button Styles */
+#sillypoker-panel .sillypoker-btn-toggle {
+    background: #dc2626; /* Default: Off (Red) */
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.1s ease;
+    font-weight: 500;
+    min-width: 80px; /* To prevent size change */
+}
+#sillypoker-panel .sillypoker-btn-toggle.active {
+    background: #16a34a; /* Green for On */
+}
+#sillypoker-panel .sillypoker-btn-toggle:hover {
+    filter: brightness(1.1);
+}
+
+/* ADDED: BGM Player Styles */
+#sillypoker-panel .bgm-player {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex-grow: 1;
+    justify-content: flex-end;
+}
+#sillypoker-panel .bgm-track-info {
+    font-size: 0.9rem;
+    color: #9ca3af;
+    font-style: italic;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 120px;
+}
+#sillypoker-panel .bgm-controls {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+#sillypoker-panel .bgm-controls .sillypoker-header-btn {
+    width: 36px;
+    height: 36px;
+    background: #374151;
+    border-radius: 50%;
+}
+#sillypoker-panel .bgm-controls .sillypoker-header-btn:hover {
+    background: #4b5563;
+}
+#sillypoker-panel .bgm-volume-control {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #9ca3af;
+}
+#sillypoker-panel input[type="range"].bgm-volume-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100px;
+    height: 5px;
+    background: #4b5563;
+    border-radius: 5px;
+    outline: none;
+    transition: opacity .2s;
+}
+#sillypoker-panel input[type="range"].bgm-volume-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 15px;
+    height: 15px;
+    background: var(--text-light);
+    cursor: pointer;
+    border-radius: 50%;
+}
+#sillypoker-panel input[type="range"].bgm-volume-slider::-moz-range-thumb {
+    width: 15px;
+    height: 15px;
+    background: var(--text-light);
+    cursor: pointer;
+    border-radius: 50%;
+    border: none;
+}
+
+
+/* ADDED: Global Button Press Feedback */
+#sillypoker-panel .sillypoker-header-btn:active,
+#sillypoker-panel .sillypoker-create-book-btn:active,
+#sillypoker-panel .difficulty-option-btn:active,
+#sillypoker-panel .sillypoker-btn-danger:active:not(:disabled),
+#sillypoker-panel .sillypoker-commit-btn-primary:active,
+#sillypoker-panel .sillypoker-commit-btn-secondary:active,
+#sillypoker-panel .map-travel-btn:active,
+#sillypoker-panel .map-action-btn:active,
+#sillypoker-panel .map-zoom-btn:active,
+#sillypoker-panel .sillypoker-btn-toggle:active {
+    transform: translateY(1px);
+    filter: brightness(0.9);
+    transition-duration: 0.05s;
 }

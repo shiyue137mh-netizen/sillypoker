@@ -7,9 +7,10 @@ import { AIGame_State } from './state.js';
 import { AIGame_Events } from './events.js';
 import { Logger } from './logger.js';
 import { generateMapData } from './mapGenerator.js';
-import { getGameTableHTML } from './gameRenderer.js';
+import { getGameTableHTML, getStagedActionsHTML } from './gameRenderer.js';
 import { getRulesViewHTML } from './components/RulesView.js';
-import { getPlayerHUDHTML } from './components/PlayerStatus.js';
+import { getPlayerHUDHTML, getPlayerInventoryHTML } from './components/PlayerStatus.js';
+import { AudioManager } from './audioManager.js';
 
 let jQuery_API, parentWin, toastr_API, DataHandler, SillyTavern_Context_API;
 
@@ -21,7 +22,9 @@ const NODE_INFO = {
     event: { icon: 'fas fa-question-circle', name: '未知事件', desc: '前方充满了未知。机遇还是陷阱？只有去了才知道。' },
     boss: { icon: 'fas fa-skull-crossbones', name: '首领', desc: '这一层的最终挑战。你需要运用所有的智慧和力量来战胜它。' },
     treasure: { icon: 'fas fa-box-open', name: '宝箱', desc: '无需战斗，直接获得奖励。' },
-    'card-sharp': { icon: 'fas fa-hand-sparkles', name: '千术师的牌桌', desc: '一个向高手学习“技巧”的机会，可以强化你的卡牌。' }
+    'card-sharp': { icon: 'fas fa-hand-sparkles', name: '千术师的牌桌', desc: '一个向高手学习“技巧”的机会，可以强化你的卡牌。' },
+    angel: { icon: '👼', name: '天使房', desc: '一个神圣的地方，或许能获得强大的祝福。' },
+    devil: { icon: '😈', name: '恶魔房', desc: '与恶魔交易，获取力量，但可能需要付出代价。' }
 };
 
 
@@ -49,7 +52,7 @@ function _getMapNodeDetailsHTML(node, isReachable) {
 
     return `
         <div class="details-main-content">
-            <div class="details-icon"><i class="${info.icon}"></i></div>
+            <div class="details-icon">${info.icon.startsWith('fas') ? `<i class="${info.icon}"></i>` : info.icon}</div>
             <h4 class="details-title">${info.name}</h4>
             <p class="details-description">${info.desc}</p>
             ${travelButtonHTML}
@@ -106,10 +109,52 @@ function _renderDifficultySelection(container) {
 
 function _renderSettingsView(container) {
     const runInProgress = AIGame_State.runInProgress;
+    const isMuted = AIGame_State.isMuted;
+    const audioButtonClass = isMuted ? '' : 'active';
+    const audioButtonText = isMuted ? '关闭' : '开启';
+
+    const bgmTracks = AudioManager.getBgmTracks();
+    const currentTrack = bgmTracks[AIGame_State.currentBgmTrackIndex];
+    const trackName = AIGame_State.isBgmPlaying ? (currentTrack?.name || '未知曲目') : '已暂停';
+    const playPauseIcon = AIGame_State.isBgmPlaying ? 'fa-pause' : 'fa-play';
+
+
     container.html(`
         <div class="settings-view-container">
             <h2 class="settings-title">设置</h2>
             <div class="settings-options-list">
+                <div class="settings-option">
+                    <div class="settings-option-text">
+                        <h4>游戏音效</h4>
+                        <p>开启或关闭点击、发牌等UI音效。</p>
+                    </div>
+                    <div class="settings-option-action">
+                        <button class="sillypoker-btn-toggle ${audioButtonClass}" id="toggle-audio-btn">
+                           ${audioButtonText}
+                        </button>
+                    </div>
+                </div>
+
+                <div class="settings-option">
+                    <div class="settings-option-text">
+                        <h4>背景音乐</h4>
+                         <p>控制游戏过程中的背景音乐。</p>
+                    </div>
+                    <div class="bgm-player">
+                        <div class="bgm-track-info" title="${trackName}">${trackName}</div>
+                        <div class="bgm-controls">
+                            <button id="bgm-prev-btn" class="sillypoker-header-btn" title="上一曲"><i class="fas fa-step-backward"></i></button>
+                            <button id="bgm-toggle-btn" class="sillypoker-header-btn" title="播放/暂停"><i class="fas ${playPauseIcon}"></i></button>
+                            <button id="bgm-next-btn" class="sillypoker-header-btn" title="下一曲"><i class="fas fa-step-forward"></i></button>
+                        </div>
+                        <div class="bgm-volume-control">
+                            <i class="fas fa-volume-down"></i>
+                            <input type="range" id="bgm-volume-slider" class="bgm-volume-slider" min="0" max="1" step="0.01" value="${AIGame_State.bgmVolume}">
+                            <i class="fas fa-volume-up"></i>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="settings-option">
                     <div class="settings-option-text">
                         <h4>重新开始挑战</h4>
@@ -124,6 +169,26 @@ function _renderSettingsView(container) {
     `);
 }
 
+function _renderPersistentUI(panel) {
+    const hudContainer = panel.find('.header-left-icons');
+    const inventoryWrapper = panel.find('#sillypoker-inventory-wrapper');
+
+    hudContainer.find('.player-hud').remove();
+    inventoryWrapper.empty();
+
+    if (AIGame_State.runInProgress) {
+        hudContainer.append(getPlayerHUDHTML(AIGame_State.playerData, AIGame_State.currentGameState));
+        
+        const inventory = AIGame_State.playerData?.inventory || [];
+        const inventoryToggleIcon = AIGame_State.isInventoryVisible ? 'fa-chevron-right' : 'fa-chevron-left';
+        inventoryWrapper.html(`
+            ${getPlayerInventoryHTML(inventory)}
+            <button class="inventory-toggle-btn" title="切换道具栏"><i class="fas ${inventoryToggleIcon}"></i></button>
+        `);
+        // Apply visibility class based on state
+        panel.toggleClass('inventory-visible', AIGame_State.isInventoryVisible);
+    }
+}
 
 export const AIGame_UI = {
     init: function(deps, dataHandler) {
@@ -133,7 +198,6 @@ export const AIGame_UI = {
         DataHandler = dataHandler;
         SillyTavern_Context_API = deps.st_context;
 
-        // Listen for log updates to refresh the UI if the log tab is active
         SillyTavern_Context_API.eventSource.on(Logger.getUpdateEventName(), () => {
             if (AIGame_State.isPanelVisible && AIGame_State.currentActiveTab === 'log') {
                 this.renderPanelContent();
@@ -200,11 +264,11 @@ export const AIGame_UI = {
         const contentDiv = panel.find('.sillypoker-content');
         const tabsContainer = panel.find('#sillypoker-tabs-container');
         const statusIndicator = panel.find('#sillypoker-status-indicator');
-        const hudContainer = panel.find('#sillypoker-global-hud-container');
-
+        
         contentDiv.empty();
         tabsContainer.empty();
-        hudContainer.empty();
+        
+        _renderPersistentUI(panel);
 
         if (!AIGame_State.hasGameBook) {
             statusIndicator.removeClass('active');
@@ -219,12 +283,6 @@ export const AIGame_UI = {
 
         statusIndicator.addClass('active');
         
-        // Render Global HUD if a run is in progress
-        if (AIGame_State.runInProgress) {
-            hudContainer.html(getPlayerHUDHTML(AIGame_State.playerData));
-        }
-
-        // Render Tabs
         let tabsHtml = '';
         if (AIGame_State.runInProgress) {
             tabsHtml += `<button class="sillypoker-tab ${AIGame_State.currentActiveTab === 'game-ui' ? 'active' : ''}" data-tab="game-ui">游戏界面</button>`;
@@ -235,7 +293,6 @@ export const AIGame_UI = {
         tabsHtml += `<button class="sillypoker-tab ${AIGame_State.currentActiveTab === 'log' ? 'active' : ''}" data-tab="log">日志</button>`;
         tabsContainer.html(`<div class="sillypoker-tabs">${tabsHtml}</div>`);
 
-        // Render Content based on active tab
         if (AIGame_State.currentActiveTab === 'settings') {
             _renderSettingsView(contentDiv);
         } else if (AIGame_State.currentActiveTab === 'rules') {
@@ -293,7 +350,8 @@ export const AIGame_UI = {
         }).join('');
         
         const nodesHtml = nodes.map(node => {
-            const iconClass = NODE_INFO[node.type]?.icon || 'fas fa-question';
+            const info = NODE_INFO[node.type] || { icon: 'fas fa-question' };
+            const iconContent = info.icon.startsWith('fas') ? `<i class="node-icon ${info.icon}"></i>` : `<span class="node-icon">${info.icon}</span>`;
             const radius = node.type === 'boss' ? 30 : 20;
             
             const isCurrent = node.id === player_position;
@@ -313,7 +371,7 @@ export const AIGame_UI = {
             return `
                 <div class="${nodeClasses}" style="left:${node.x}px; top:${node.y}px; width:${radius*2}px; height:${radius*2}px;" data-node-id="${node.id}" data-node-type="${node.type}">
                     <svg class="node-bg" width="${radius*2}" height="${radius*2}" viewBox="0 0 ${radius*2} ${radius*2}"><circle cx="${radius}" cy="${radius}" r="${radius-2}"/></svg>
-                    <i class="node-icon ${iconClass}"></i>
+                    ${iconContent}
                 </div>
             `;
         }).join('');
@@ -331,10 +389,13 @@ export const AIGame_UI = {
         let mapButtonsHTML = '';
         if (mapData.bossDefeated) {
             mapButtonsHTML = `<button class="map-action-btn next-floor-btn">前往下一层</button>`;
-        } else if (!mapData.player_position) {
+        } else if (mapData.player_position) {
+            const hasSearched = mapData.searched_nodes?.includes(mapData.player_position);
+            mapButtonsHTML = `<button class="map-action-btn find-secret-btn" ${hasSearched ? 'disabled' : ''}>查找隐藏 (200筹码)</button>`;
+        } else { // !mapData.player_position
             mapButtonsHTML = `
                 <button class="map-action-btn save-map-btn">保存地图</button>
-                <button class="map-action-btn reroll-map-btn">重roll地图</button>
+                <button class="map-action-btn reroll-map-btn" ${mapData.is_saved ? 'disabled' : ''}>重roll地图</button>
             `;
         }
 
@@ -368,22 +429,19 @@ export const AIGame_UI = {
         const mapCanvas = container.find('.map-canvas');
         mapCanvas.css('transform', `translate(${AIGame_State.mapPan.x}px, ${AIGame_State.mapPan.y}px) scale(${AIGame_State.mapZoom})`);
 
-        // Re-attach map-specific event listeners every time the map is rendered.
         AIGame_Events.addMapInteractionListeners(container);
         
-        // Center the map on the first load if no player position is set.
         if (!AIGame_State.mapTransformInitialized && player_position === null) {
-            // Use a timeout to ensure the DOM is painted and dimensions are available.
             setTimeout(() => {
                 const mapContainer = container.find('.map-pan-zoom-container');
                 if (mapContainer.length && mapContainer.height() > 0) {
                     const cHeight = mapContainer.height();
                     const cWidth = mapContainer.width();
-                    const canvasH = 800; // From CSS
-                    const canvasW = 600; // From CSS
+                    const canvasH = 800;
+                    const canvasW = 600;
                     
-                    AIGame_State.mapPan.x = (cWidth - canvasW) / 2; // Center horizontally
-                    AIGame_State.mapPan.y = cHeight - canvasH + 20; // Align bottom with 20px padding
+                    AIGame_State.mapPan.x = (cWidth - canvasW) / 2;
+                    AIGame_State.mapPan.y = cHeight - canvasH + 20;
                     AIGame_State.mapZoom = 1.0;
 
                     mapCanvas.css('transform', `translate(${AIGame_State.mapPan.x}px, ${AIGame_State.mapPan.y}px) scale(${AIGame_State.mapZoom})`);
@@ -396,9 +454,17 @@ export const AIGame_UI = {
         }
     },
 
-    _renderGameView(container) {
+    async _renderGameView(container) {
+        // NEW: Check for pending actions before rendering
+        if (AIGame_State.currentGameState?.pending_deal_actions?.length > 0) {
+            await DataHandler.processPendingDealActions();
+            // The processPendingDealActions function will call fetchAllGameData, which in turn
+            // calls renderPanelContent, so we can just return here to avoid a double render.
+            return;
+        }
+
         const { playerData, enemyData, currentGameState } = AIGame_State;
-        if (!playerData || !enemyData || enemyData.enemies.length === 0) {
+        if (!playerData || !currentGameState || !enemyData || !enemyData.enemies || enemyData.enemies.length === 0) {
              container.html(`
                 <div class="sillypoker-content-centerer">
                     <p>荷官正在洗牌...</p>
@@ -409,17 +475,15 @@ export const AIGame_UI = {
         }
         container.html(getGameTableHTML(playerData, enemyData, currentGameState));
         
-        // This triggers the card animations.
         setTimeout(() => {
             container.find('.card').addClass('animate-in');
         }, 10);
 
-        this.updateCommitButton();
+        this.rerenderStagedActionsAndCommitButton();
     },
 
     _renderRulesView(container) {
         container.html(getRulesViewHTML());
-        // Trigger a click on the first item to load it by default
         const firstRuleItem = container.find('.rules-list-item').first();
         if(firstRuleItem.length) {
             firstRuleItem.trigger('click');
@@ -441,22 +505,40 @@ export const AIGame_UI = {
         }).join('');
         container.html(`<div class="log-view-container">${logHtml}</div>`);
         
-        // Auto-scroll to bottom
         const logContainer = container.find('.log-view-container');
         if (logContainer.length) {
             logContainer.scrollTop(logContainer[0].scrollHeight);
         }
     },
 
-    updateCommitButton() {
-        const commitBtn = jQuery_API(parentWin.document.body).find('#sillypoker-commit-btn');
+    rerenderStagedActionsAndCommitButton() {
+        const panel = jQuery_API(parentWin.document.body).find(`#${AIGame_Config.PANEL_ID}`);
+        // Render Staged Actions
+        const stagedActionsContainer = panel.find('.staged-actions-container');
+        if (stagedActionsContainer.length) {
+            stagedActionsContainer.html(getStagedActionsHTML(AIGame_State.stagedPlayerActions));
+        }
+        // Update Commit Button Area
+        const commitArea = panel.find('#sillypoker-commit-area');
+        const commitBtn = commitArea.find('#sillypoker-commit-btn');
         const actionCount = AIGame_State.stagedPlayerActions.length;
 
         if (actionCount > 0) {
-            commitBtn.removeClass('hidden');
+            commitArea.removeClass('hidden');
             commitBtn.attr('data-count', actionCount);
         } else {
-            commitBtn.addClass('hidden');
+            commitArea.addClass('hidden');
+        }
+    },
+
+    rerenderPlayerHUD() {
+        const panel = jQuery_API(parentWin.document.body).find(`#${AIGame_Config.PANEL_ID}`);
+        const hudContainer = panel.find('.header-left-icons');
+        
+        hudContainer.find('.player-hud').remove(); // Remove old HUD
+        
+        if (AIGame_State.runInProgress) {
+             hudContainer.append(getPlayerHUDHTML(AIGame_State.playerData, AIGame_State.currentGameState));
         }
     },
     
