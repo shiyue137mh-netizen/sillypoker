@@ -24,6 +24,7 @@ export const AIGame_MapHandler = {
     },
 
     async travelToNode(nodeId, nodeType) {
+        context.AudioManager_API.play('click1');
         // 1. Update map data in worldbook
         await context.updateWorldbook('sp_map_data', (mapData) => {
             mapData.player_position = nodeId;
@@ -50,7 +51,7 @@ export const AIGame_MapHandler = {
 
         // 3. Send to AI
         await context.TavernHelper_API.triggerSlash(`/setinput ${JSON.stringify(prompt)}`);
-        context.SillyTavern_Context_API.generate();
+        context.SillyTavern_API.getContext().generate();
 
         // 4. Update UI: Fetch data, switch view
         AIGame_State.currentActiveTab = 'game-ui';
@@ -115,6 +116,6 @@ export const AIGame_MapHandler = {
         }
 
         await context.TavernHelper_API.triggerSlash(`/setinput ${JSON.stringify(prompt)}`);
-        context.SillyTavern_Context_API.generate();
+        context.SillyTavern_API.getContext().generate();
     }
 };

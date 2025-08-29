@@ -190,6 +190,7 @@
 ```
 来一场极限对局吧！对手是赌圣、赌侠和赌神。游戏是四人斗地主。
 <command>
+[Game:SetupDeck, data:{"num_decks": 2, "jokers": 4}]
 [Game:Start, data:{"game_type": "DouDiZhu_4Player", "players": ["{{user}}", "赌圣", "赌侠", "赌神"], "initial_state": { "name": "AI Opponent", "play_style": "Unpredictable", "chips": 1000, "hand": [] }}]
 [Game:Function, type:发牌, data:{"actions":[
     {"target":"player", "count":25, "visibility":"owner"},

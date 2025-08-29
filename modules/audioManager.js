@@ -100,11 +100,14 @@ async function loadSound(name, url) {
 function _initBGM() {
     if (bgmAudioElement) return;
     bgmAudioElement = new parentWin.Audio();
-    bgmAudioElement.loop = false; // We handle looping manually for playlists
+    
     bgmAudioElement.volume = AIGame_State.bgmVolume;
 
+    // FIX: This event listener is the key to playlist looping. When one track ends,
+    // it calls the `nextTrack` function, which will handle playing the next song
+    // in the list, effectively creating a playlist loop.
     bgmAudioElement.addEventListener('ended', () => {
-        Logger.log('BGM track ended, playing next.');
+        Logger.log('BGM track ended, playing next in playlist.');
         AudioManager.nextTrack(true); // Auto-play the next track
     });
 

@@ -16,7 +16,7 @@ async function _handleEventModify(command) {
         return;
     }
 
-    const userPlayerName = await context.SillyTavern_Context_API.substituteParamsExtended('{{user}}');
+    const userPlayerName = await context.SillyTavern_API.getContext().substituteParamsExtended('{{user}}');
     const isPlayerTarget = target === '{{user}}' || target === userPlayerName;
 
     const updater = (data) => {

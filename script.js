@@ -1,6 +1,7 @@
 
 
 
+
 /**
  * AI Card Table Extension for SillyTavern - Main Entry Point
  * @version 8.4.0
@@ -100,8 +101,9 @@ async function mainInitialize() {
         // If the panel is open during the chat change, we need to immediately
         // re-evaluate the state for the new character.
         if (AIGame_State.isPanelVisible) {
-            Logger.log('面板在切换时已打开，立即为新角色运行世界书检查。');
-            AIGame_DataHandler.checkGameBookExists(); // This function will fetch data and re-render.
+            // FIX REMOVED: No longer need a brittle setTimeout. The dataHandler will wait for a stable context.
+            Logger.log('面板在切换时已打开，立即检查新角色的状态。');
+            AIGame_DataHandler.checkGameBookExists(); // Direct call
         } else {
             // If panel is closed, we don't need to do anything else.
             // The check will happen when the user opens it next time.

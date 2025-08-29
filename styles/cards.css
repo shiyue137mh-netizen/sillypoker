@@ -70,11 +70,14 @@
     font-family: 'Playfair Display', serif; 
     font-weight: 700; 
     user-select: none; 
+    display: block;
+    transition: transform 0.2s ease-out, box-shadow 0.2s ease-out, border-color 0.2s ease-out;
+}
+
+#sillypoker-panel .card.animate-in {
     opacity: 0;
     animation: card-entry-animation 0.6s cubic-bezier(0.25, 1, 0.5, 1) forwards;
     animation-delay: var(--animation-delay, 0s);
-    display: block;
-    transition: transform 0.2s ease-out, box-shadow 0.2s ease-out, border-color 0.2s ease-out; /* ADDED */
 }
 
 #sillypoker-panel .card.selected {

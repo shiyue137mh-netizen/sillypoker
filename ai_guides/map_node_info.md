@@ -47,3 +47,4 @@
     [Game:End, data:{"result":"boss_win", "reason":"你终于战胜了赌场的区域经理！"}]
     [Event:Modify, data:{"target":"{{user}}", "modifications":[ {"field":"chips", "operation":"add", "value":2000} ]}]
 </command>
+**注意：此处必须使用 "boss_win" 结果，这是解锁通往下一层道路的关键。**

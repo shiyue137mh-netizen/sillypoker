@@ -252,8 +252,9 @@ export const AIGame_UI = {
         panel.toggleClass('hidden', !shouldShow);
 
         if (shouldShow) {
-            Logger.log('面板正在打开，将触发世界书状态检查...');
-            DataHandler.checkGameBookExists();
+            // FIX REMOVED: The setTimeout is no longer needed. DataHandler handles the wait.
+            Logger.log('面板正在打开，立即检查世界书状态。');
+            DataHandler.checkGameBookExists(); // Direct call
         } else {
             Logger.log('面板已关闭。');
         }
@@ -475,9 +476,13 @@ export const AIGame_UI = {
         }
         container.html(getGameTableHTML(playerData, enemyData, currentGameState));
         
-        setTimeout(() => {
-            container.find('.card').addClass('animate-in');
-        }, 10);
+        if (AIGame_State.isDealing) {
+            AIGame_State.isDealing = false; // Consume flag
+            // Add class to trigger animation on newly rendered cards
+            setTimeout(() => { // A tiny delay to ensure elements are in the DOM for animation
+                 container.find('.card').addClass('animate-in');
+            }, 10);
+        }
 
         this.rerenderStagedActionsAndCommitButton();
     },
@@ -570,5 +575,44 @@ export const AIGame_UI = {
         const centerY = rect.height / 2;
         const zoomFactor = direction === 'in' ? 1.2 : 1 / 1.2;
         this.zoomMap(zoomFactor, centerX, centerY);
+    },
+
+    animateChips(sourceSelector, targetSelector) {
+        const panel = jQuery_API(parentWin.document.body).find('#' + AIGame_Config.PANEL_ID);
+        const sourceEl = panel.find(sourceSelector);
+        const targetEl = panel.find(targetSelector);
+
+        if (!sourceEl.length || !targetEl.length) {
+            Logger.warn('Cannot animate chips, source or target not found.', { source: sourceSelector, target: targetSelector });
+            return;
+        }
+
+        const panelOffset = panel.offset();
+        const sourceOffset = sourceEl.offset();
+        const targetOffset = targetEl.offset();
+
+        const startX = sourceOffset.left - panelOffset.left + (sourceEl.width() / 2);
+        const startY = sourceOffset.top - panelOffset.top + (sourceEl.height() / 2);
+
+        const endX = targetOffset.left - panelOffset.left + (targetEl.width() / 2);
+        const endY = targetOffset.top - panelOffset.top + (targetEl.height() / 2);
+
+        const chip = jQuery_API('<div class="animated-chip"><i class="fas fa-coins"></i></div>');
+        chip.css({
+            left: `${startX}px`,
+            top: `${startY}px`
+        });
+        panel.append(chip);
+        
+        setTimeout(() => {
+            chip.css({
+                left: `${endX}px`,
+                top: `${endY}px`
+            }).addClass('moving');
+        }, 20);
+
+        setTimeout(() => {
+            chip.remove();
+        }, 800);
     }
 };

@@ -27,6 +27,7 @@ export const AIGame_State = {
     currentGameState: null, // Holds the public state of the current game
     privateGameData: null, // Holds the private state like the deck
     stagedPlayerActions: [], // Holds player actions before committing
+    isDealing: false, // NEW: Tracks if cards are currently being dealt to trigger animations
 
     // Map-specific state
     mapData: null, // Holds the generated or loaded map data object

@@ -3,6 +3,7 @@
  * @description Generates the HTML string for the casino game table.
  */
 import { AIGame_State } from './state.js';
+import { AIGame_Config } from '../config.js'; // Import config for emotes
 import { Logger } from './logger.js';
 
 // No longer needs dependencies after finding the root cause.
@@ -30,6 +31,8 @@ function getCardHTML(card, locationInfo = {}, animationIndex = 0) {
     const dataAttrs = `
         data-location="${location || ''}" 
         data-index="${index !== undefined ? index : ''}" 
+        data-suit="${card.suit || ''}"
+        data-rank="${card.rank || ''}"
         ${enemyName ? `data-enemy-name="${enemyName}"` : ''}
     `.trim();
 
@@ -62,7 +65,7 @@ function getCardHTML(card, locationInfo = {}, animationIndex = 0) {
          `;
     }
 
-    const rankText = card.rank === '10' ? '10' : (card.rank ? card.rank.slice(0, 1) : '?');
+    const rankText = card.rank === '10' ? '10' : (card.rank ? card.rank : '?');
 
     const centralContentHTML = `
         <div class="card-corner top-left">
@@ -77,7 +80,7 @@ function getCardHTML(card, locationInfo = {}, animationIndex = 0) {
     `;
 
     return `
-        <div class="${cardClasses}" data-suit="${suitSymbol}" data-rank="${card.rank}" style="--animation-delay: ${animationDelay};" ${dataAttrs}>
+        <div class="${cardClasses}" style="--animation-delay: ${animationDelay};" ${dataAttrs}>
             ${deleteButtonHTML}
             ${centralContentHTML}
         </div>
@@ -95,13 +98,17 @@ export function getStagedActionsHTML(stagedActions) {
 
     const actionsHTML = stagedActions.map(action => {
         let text = '';
+        let cardText = (action.cards && action.cards.length > 0) 
+            ? ` ${action.cards.map(c => c.suit + c.rank).join(' ')}` 
+            : '';
+
         switch(action.type) {
             case 'bet': text = `下注: ${action.amount}`; break;
-            case 'call': text = '跟注'; break;
+            case 'call': text = `跟注: ${action.amount}`; break;
             case 'check': text = '过牌'; break;
-            case 'fold': text = '弃牌'; break;
-            case 'play_cards': text = `出牌: ${action.cards.map(c => c.rank+c.suit).join(' ')}`; break;
-            case 'custom': text = `动作: ${action.text}`; break;
+            case 'fold': text = `弃牌${cardText}`; break;
+            case 'play_cards': text = `出牌${cardText}`; break;
+            case 'custom': text = `动作: ${action.text}${cardText}`; break;
             case 'hit': text = '要牌'; break;
             case 'stand': text = '停牌'; break;
             default: text = action.type;
@@ -121,22 +128,66 @@ export function getStagedActionsHTML(stagedActions) {
 function getActionButtonsHTML(gameState) {
     const gameType = gameState?.game_type;
 
+    // Specific UI for Blackjack
     if (gameType === 'Blackjack') {
         return `
-            <button data-action="bet">下注</button>
-            <button data-action="hit">要牌</button>
-            <button data-action="stand">停牌</button>
-            <button data-action="custom">自定义...</button>
+            <div class="action-buttons-wrapper">
+                 <div class="action-button-group">
+                    <button data-action="bet">下注</button>
+                </div>
+                <div class="action-button-group">
+                    <button data-action="hit">要牌</button>
+                    <button data-action="stand">停牌</button>
+                </div>
+                 <div class="action-button-group">
+                    <button data-action="custom">自定义...</button>
+                </div>
+            </div>
         `;
     }
 
-    // Default buttons for TexasHoldem and other games
+    // Default layout for Poker-like games
+    const allInButtonHTML = `
+        <button id="all-in-btn" title="将你所有的筹码全部下注！">
+            <span>All In</span>
+        </button>
+    `;
+
+    // Updated Layout: Betting on the left, Cards/Other on the right
     return `
-        <button data-action="bet">下注</button>
-        <button data-action="check">过牌</button>
-        <button data-action="fold">弃牌</button>
-        <button data-action="play_cards">出牌</button>
-        <button data-action="custom">自定义...</button>
+        <div class="action-buttons-wrapper">
+            <div class="action-button-group"> <!-- Betting Actions -->
+                ${allInButtonHTML}
+                <button data-action="bet">下注</button>
+                <button data-action="call">跟注</button>
+                <button data-action="check">过牌</button>
+            </div>
+            <div class="action-button-group"> <!-- Card & Custom Actions -->
+                <button data-action="play_cards">出牌</button>
+                <button data-action="fold">弃牌</button>
+                <button data-action="custom">自定义...</button>
+            </div>
+        </div>
+    `;
+}
+
+// New: Function to generate the emote wheel HTML
+function getEmoteWheelHTML() {
+    const menuItemsHTML = AIGame_Config.EMOTE_LABELS.map((label, index) => `
+        <button class="emote-wheel-item" data-index="${index}" title="${AIGame_Config.EMOTE_TEXTS[index]}">
+            ${label}
+        </button>
+    `).join('');
+
+    return `
+        <div class="emote-wheel-container">
+            <div class="emote-wheel-menu">
+                ${menuItemsHTML}
+            </div>
+            <button class="emote-wheel-button" title="发送表情/台词">
+                <i class="fas fa-comment-dots"></i>
+            </button>
+        </div>
     `;
 }
 
@@ -159,8 +210,7 @@ export function getGameTableHTML(playerData, enemyData, gameState) {
     const userPlayerName = playerData?.name || '{{user}}';
     const potAmount = gameState?.pot_amount ?? 0;
     const turnActiveClass = gameState?.current_turn ? 'turn-active' : '';
-    const stagedActionsHTML = getStagedActionsHTML(AIGame_State.stagedPlayerActions);
-
+    
     let cardAnimationIndex = 0;
 
     // --- Player Area (always at the bottom) ---
@@ -168,76 +218,62 @@ export function getGameTableHTML(playerData, enemyData, gameState) {
     const playerHandClasses = `hand horizontal-hand ${playerHand.length > 5 ? 'large-hand' : ''}`;
     const playerHandHTML = playerHand.map((card, i) => getCardHTML(card, { location: 'player_hand', index: i }, cardAnimationIndex++)).join('');
     const playerAreaHTML = `
-        <div class="player-position-container position-bottom ${isPlayerTurn ? 'active-turn' : ''}">
+        <div id="player-area-bottom" class="player-position-container position-bottom ${isPlayerTurn ? 'active-turn' : ''}">
             <div class="player-hand-actions">
                 <div class="${playerHandClasses}">${playerHandHTML}</div>
-                ${stagedActionsHTML}
-                <div class="action-buttons">${getActionButtonsHTML(gameState)}</div>
+                <div class="staged-actions-container"></div>
+                ${getActionButtonsHTML(gameState)}
             </div>
         </div>
     `;
 
     // --- Opponent Areas (dynamically positioned) ---
     const enemyCount = enemies.length;
-    let opponentsHTML;
+    let opponentsHTML = '';
+
+    const createOpponentHTML = (enemy, positionClass, handLayoutClass, areaId, index) => {
+        const isEnemyTurn = gameState?.current_turn === enemy.name;
+        const enemyHand = enemy.hand || [];
+        const enemyHandClasses = `hand ${handLayoutClass} ${enemyHand.length > 5 ? 'large-hand' : ''}`;
+        const enemyHandHTML = enemyHand.map((card, i) => getCardHTML(card, { location: 'enemy_hand', enemyName: enemy.name, index: i }, cardAnimationIndex++)).join('');
+        const thinkingIndicator = isEnemyTurn ? '<span class="thinking-indicator"></span>' : '';
+
+        return `
+            <div id="${areaId}" class="player-position-container ${positionClass} ${isEnemyTurn ? 'active-turn' : ''}" data-enemy-name="${enemy.name}">
+                <div class="opponent-container">
+                    <div class="opponent-info">
+                        <div class="opponent-name">${enemy.name || 'Opponent'}${thinkingIndicator}</div>
+                        <div class="opponent-style">${enemy.play_style || '...'}</div>
+                        <div class="opponent-chips">
+                            <i class="fas fa-coins"></i>
+                            <span>${enemy.chips?.toLocaleString() || '0'}</span>
+                        </div>
+                    </div>
+                    <div class="${enemyHandClasses}">${enemyHandHTML}</div>
+                </div>
+            </div>
+        `;
+    };
 
     if (enemyCount > 0 && enemyCount <= 2) {
-        const opponentGroupHTML = enemies.map(enemy => {
-            const isEnemyTurn = gameState?.current_turn === enemy.name;
-            const enemyHand = enemy.hand || [];
-            const enemyHandClasses = `hand horizontal-hand ${enemyHand.length > 5 ? 'large-hand' : ''}`;
-            const enemyHandHTML = enemyHand.map((card, i) => getCardHTML(card, { location: 'enemy_hand', enemyName: enemy.name, index: i }, cardAnimationIndex++)).join('');
-
-            return `
-                <div class="player-position-container ${isEnemyTurn ? 'active-turn' : ''}">
-                    <div class="opponent-container">
-                        <div class="opponent-info">
-                            <div class="opponent-name">${enemy.name || 'Opponent'}</div>
-                            <div class="opponent-style">${enemy.play_style || '...'}</div>
-                        </div>
-                        <div class="${enemyHandClasses}">${enemyHandHTML}</div>
-                    </div>
-                </div>
-            `;
+        const opponentGroupHTML = enemies.map((enemy, index) => {
+             return createOpponentHTML(enemy, '', 'horizontal-hand', `opponent-area-top-${index}`, index);
         }).join('');
         opponentsHTML = `<div class="opponent-area-container position-top">${opponentGroupHTML}</div>`;
     
     } else if (enemyCount >= 3) {
         opponentsHTML = enemies.map((enemy, index) => {
-            let positionClass = '';
-            let handLayoutClass = 'horizontal-hand';
-
+            let positionClass = '', handLayoutClass = '', areaId = '';
             switch(index) {
                 case 0: 
-                    positionClass = 'position-left';
-                    handLayoutClass = 'vertical-hand';
-                    break;
+                    positionClass = 'position-left'; handLayoutClass = 'vertical-hand'; areaId = 'opponent-area-left'; break;
                 case 1:
-                    positionClass = 'position-top-center';
-                    break;
+                    positionClass = 'position-top-center'; handLayoutClass = 'horizontal-hand'; areaId = 'opponent-area-top-center'; break;
                 default:
                 case 2:
-                    positionClass = 'position-right';
-                    handLayoutClass = 'vertical-hand';
-                    break;
+                    positionClass = 'position-right'; handLayoutClass = 'vertical-hand'; areaId = 'opponent-area-right'; break;
             }
-
-            const isEnemyTurn = gameState?.current_turn === enemy.name;
-            const enemyHand = enemy.hand || [];
-            const enemyHandClasses = `hand ${handLayoutClass} ${enemyHand.length > 5 ? 'large-hand' : ''}`;
-            const enemyHandHTML = enemyHand.map((card, i) => getCardHTML(card, { location: 'enemy_hand', enemyName: enemy.name, index: i }, cardAnimationIndex++)).join('');
-
-            return `
-                <div class="player-position-container ${positionClass} ${isEnemyTurn ? 'active-turn' : ''}">
-                    <div class="opponent-container">
-                        <div class="opponent-info">
-                            <div class="opponent-name">${enemy.name || 'Opponent'}</div>
-                            <div class="opponent-style">${enemy.play_style || '...'}</div>
-                        </div>
-                        <div class="${enemyHandClasses}">${enemyHandHTML}</div>
-                    </div>
-                </div>
-            `;
+             return createOpponentHTML(enemy, positionClass, handLayoutClass, areaId, index);
         }).join('');
     }
 
@@ -259,7 +295,7 @@ export function getGameTableHTML(playerData, enemyData, gameState) {
                 <div class="deck-placeholder"><i class="fas fa-dice-d20"></i></div>
                 
                 <div class="board-area-container">
-                    <div class="pot">
+                    <div id="pot-area" class="pot">
                         <div>彩池</div>
                         <div class="pot-amount">$${potAmount.toLocaleString()}</div>
                         <div class="custom-wagers-area">${customWagersHTML}</div>
@@ -270,6 +306,7 @@ export function getGameTableHTML(playerData, enemyData, gameState) {
                 ${playerAreaHTML}
                 ${opponentsHTML}
             </div>
+            ${getEmoteWheelHTML()}
         </div>
     `;
 }

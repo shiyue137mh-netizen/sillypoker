@@ -7,7 +7,7 @@ import { AIGame_State } from './state.js';
 import { Logger } from './logger.js';
 import { AudioManager } from './audioManager.js';
 
-let jQuery_API, parentWin, DataHandler, UI, toastr_API, SillyTavern_Context_API;
+let jQuery_API, parentWin, DataHandler, UI, toastr_API, SillyTavern_Context_API, TavernHelper_API;
 
 // Lazy load showdown converter
 let markdownConverter = null;
@@ -33,6 +33,7 @@ export const AIGame_Events = {
         UI = uiHandler;
         toastr_API = deps.toastr;
         SillyTavern_Context_API = deps.st_context;
+        TavernHelper_API = deps.th; // Added TavernHelper API
     },
     
     addGlobalEventListeners() {
@@ -54,6 +55,12 @@ export const AIGame_Events = {
             const closest = (selector) => target.closest(selector);
             const targetId = target.attr('id');
             let isSoundWorthy = true;
+
+            // New: Close emote wheel if click is outside
+            const emoteContainer = closest('.emote-wheel-container');
+            if (!emoteContainer.length) {
+                panel.find('.emote-wheel-menu').removeClass('visible');
+            }
 
             if (closest('.sillypoker-close-btn').length) {
                 UI.togglePanel(false);
@@ -139,24 +146,87 @@ export const AIGame_Events = {
                 const actionId = closest('.undo-action-btn').data('action-id');
                 DataHandler.undoStagedAction(actionId);
             }
-            else if (closest('.action-buttons button').length) {
-                const actionButton = closest('.action-buttons button');
+             // New: Emote Wheel Logic
+            else if (emoteContainer.length) {
+                isSoundWorthy = false; // Custom sounds handled inside
+                if (closest('.emote-wheel-button').length) {
+                    await AudioManager.play('click2');
+                    panel.find('.emote-wheel-menu').toggleClass('visible');
+                }
+                else if (closest('.emote-wheel-item').length) {
+                    await AudioManager.play('click1');
+                    const item = closest('.emote-wheel-item');
+                    const itemIndex = item.data('index');
+                    let textTemplate = AIGame_Config.EMOTE_TEXTS[itemIndex];
+                    
+                    // We only need to substitute our custom placeholders.
+                    // SillyTavern will handle {{user}} automatically when the text is sent for generation.
+                    const playerChips = AIGame_State.playerData?.chips || 0;
+
+                    let final_text = textTemplate
+                        .replace(/\[现在筹码数\]/g, playerChips.toLocaleString());
+
+                    // Close menu immediately for better UX
+                    panel.find('.emote-wheel-menu').removeClass('visible');
+
+                    // Use /setinput and generate() to send the message as a user and trigger an AI response.
+                    await TavernHelper_API.triggerSlash(`/setinput ${JSON.stringify(final_text)}`);
+                    SillyTavern_Context_API.generate();
+                }
+            }
+            else if (closest('#all-in-btn').length) {
+                isSoundWorthy = false;
+                const allInButton = closest('#all-in-btn');
+                const confirmResult = await SillyTavern_Context_API.callGenericPopup(`你确定要全下所有筹码吗？`, SillyTavern_Context_API.POPUP_TYPE.CONFIRM, '', { title: '终极抉择' });
+                if (confirmResult) {
+                    await AudioManager.play('dice');
+                    allInButton.prop('disabled', true);
+                    const textSpan = allInButton.find('span');
+                    textSpan.addClass('shattering');
+                    await DataHandler.playerGoesAllIn();
+                }
+            }
+            else if (closest('.action-buttons-wrapper button').length) {
+                isSoundWorthy = false; // Sound is handled by the staging logic
+                const actionButton = closest('.action-buttons-wrapper button');
                 const actionType = actionButton.data('action');
                 let action = { type: actionType };
 
-                const selectedCards = [];
-                if (actionType === 'fold' || actionType === 'play_cards') {
+                // NEW: Handle card selection for relevant actions
+                if (['fold', 'play_cards', 'custom'].includes(actionType)) {
+                     const selectedCards = [];
                      panel.find('.player-position-container .hand .card.selected').each(function() {
-                        const suit = jQuery_API(this).data('suit');
-                        // BUG FIX: Select only the top-left rank to avoid duplication (e.g., '1010' or 'JJ')
-                        const rank = jQuery_API(this).find('.card-corner.top-left .card-corner-rank').text();
-                        selectedCards.push({ suit, rank });
+                        const cardElement = jQuery_API(this);
+                        const suit = cardElement.data('suit');
+                        const rank = cardElement.data('rank');
+                        if (suit && rank) {
+                           selectedCards.push({ suit, rank });
+                        }
                     });
-                    action.cards = selectedCards;
+                    if (selectedCards.length > 0) {
+                        action.cards = selectedCards;
+                    }
+                }
+
+                if (actionType === 'call') {
+                    const amountToCall = AIGame_State.currentGameState?.last_bet_amount ?? 0;
+                    const playerChips = AIGame_State.playerData?.chips ?? 0;
+                    
+                    if (amountToCall <= 0) {
+                        toastr_API.info('当前没有需要跟注的下注。', "无效操作");
+                        return;
+                    }
+            
+                    const finalAmount = Math.min(playerChips, amountToCall);
+                    if (playerChips < amountToCall) {
+                         toastr_API.info(`你的筹码不足，将以 ${finalAmount} 筹码全下。`, "全下！");
+                    }
+                    action.amount = finalAmount;
                 }
 
                 if (actionType === 'bet') {
-                    const amountStr = await SillyTavern_Context_API.callGenericPopup('请输入下注金额:', SillyTavern_Context_API.POPUP_TYPE.INPUT, '100');
+                    const defaultBet = String(AIGame_State.currentGameState?.last_bet_amount || 100);
+                    const amountStr = await SillyTavern_Context_API.callGenericPopup('请输入下注金额:', SillyTavern_Context_API.POPUP_TYPE.INPUT, defaultBet);
                     if (amountStr === false || amountStr === null || String(amountStr).trim() === '') return;
                     
                     const amount = parseInt(amountStr, 10);

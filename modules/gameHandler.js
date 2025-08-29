@@ -218,7 +218,7 @@ async function _handleGameStart(command) {
         Logger.error('Missing "initial_state" in [Game:Start] command. Using a fallback. The character should be prompted to include this.', command.data);
     }
 
-    const userPlayerName = await context.SillyTavern_Context_API.substituteParamsExtended('{{user}}');
+    const userPlayerName = await context.SillyTavern_API.getContext().substituteParamsExtended('{{user}}');
     const enemyNames = players.filter(p => p !== '{{user}}' && p !== userPlayerName);
     
     const enemies = enemyNames.map(name => ({
@@ -226,6 +226,12 @@ async function _handleGameStart(command) {
         name: name,
         hand: [] 
     }));
+    
+    const defaultDeck = shuffle(createDeck());
+    await context.updateWorldbook('sp_private_data', () => ({
+        deck: defaultDeck
+    }));
+    Logger.log('Game started, default 52-card deck created.');
 
     await context.updateWorldbook('sp_enemy_data', () => ({ enemies }));
     await context.updateWorldbook('sp_game_state', (s) => {
@@ -240,12 +246,6 @@ async function _handleGameStart(command) {
         return s;
     });
     await context.updateWorldbook('sp_player_cards', data => ({ ...data, current_hand: [] }));
-
-    // Always create and shuffle a new deck to ensure a fresh game state.
-    Logger.log("[Game:Start] Creating a fresh, shuffled 52-card deck for the new game.");
-    await context.updateWorldbook('sp_private_data', () => ({
-        deck: shuffle(createDeck())
-    }));
 
     Logger.success(`Game started: ${game_type}`);
     await context.fetchAllGameData();
@@ -290,6 +290,7 @@ async function _handleGameEnd(command) {
         }
     } else if (result === 'lose') {
         context.toastr_API.warning(reason, "失败...");
+        context.AudioManager_API.play('dice');
         const panelElement = context.parentWin.jQuery('#sillypoker-panel');
         if (panelElement.length) {
             panelElement.addClass('shake-flash');
@@ -357,7 +358,7 @@ async function _handleGameEnd(command) {
         context.toastr_API.info(reason, "牌局结束");
     }
 
-    // Clean up game state regardless of result
+    // Clean up game state
     await context.updateWorldbook('sp_enemy_data', () => ({ enemies: [] }));
     await context.updateWorldbook('sp_game_state', () => ({}));
     await context.updateWorldbook('sp_player_cards', (data) => ({ ...data, "current_hand": [] }));
@@ -381,10 +382,21 @@ async function _handleGameHint(command) {
 }
 
 async function _handleActionBet(command) {
-    await AudioManager.play('chip');
     const { player_name, amount, things } = command.data;
-    const userPlayerName = await context.SillyTavern_Context_API.substituteParamsExtended('{{user}}');
+    const userPlayerName = await context.SillyTavern_API.getContext().substituteParamsExtended('{{user}}');
     
+    // Determine source selector for animation
+    let sourceSelector = '#player-area-bottom'; // Default to player
+    if (player_name !== userPlayerName) {
+        const enemy = AIGame_State.enemyData.enemies.find(e => e.name === player_name);
+        if (enemy) {
+            const enemyId = context.parentWin.jQuery(`[data-enemy-name="${enemy.name}"]`).closest('.player-position-container').attr('id');
+            if (enemyId) sourceSelector = `#${enemyId}`;
+        }
+    }
+    context.UI.animateChips(sourceSelector, '#pot-area');
+    await AudioManager.play('chip');
+
     if (amount) {
         const numericAmount = parseInt(amount, 10);
         await context.updateWorldbook('sp_game_state', s => ({ 
@@ -415,9 +427,8 @@ async function _handleActionBet(command) {
 }
 
 async function _handleActionCall(command) {
-    await AudioManager.play('chip');
     const { player_name } = command.data;
-    const userPlayerName = await context.SillyTavern_Context_API.substituteParamsExtended('{{user}}');
+    const userPlayerName = await context.SillyTavern_API.getContext().substituteParamsExtended('{{user}}');
     const amountToCall = AIGame_State.currentGameState.last_bet_amount || 0;
 
     if (amountToCall <= 0) {
@@ -425,6 +436,17 @@ async function _handleActionCall(command) {
         return; // Nothing to call
     }
     
+    let sourceSelector = '#player-area-bottom';
+     if (player_name !== userPlayerName) {
+        const enemy = AIGame_State.enemyData.enemies.find(e => e.name === player_name);
+        if (enemy) {
+            const enemyId = context.parentWin.jQuery(`[data-enemy-name="${enemy.name}"]`).closest('.player-position-container').attr('id');
+            if (enemyId) sourceSelector = `#${enemyId}`;
+        }
+    }
+    context.UI.animateChips(sourceSelector, '#pot-area');
+    await AudioManager.play('chip');
+
     await context.updateWorldbook('sp_game_state', s => ({ ...s, pot_amount: (s.pot_amount || 0) + amountToCall }));
 
     if (player_name === userPlayerName) {
@@ -454,7 +476,7 @@ async function _handleActionFold(command) {
 async function _handleActionHit(command) {
     await AudioManager.play('deal');
     const { player_name } = command.data;
-    const userPlayerName = await context.SillyTavern_Context_API.substituteParamsExtended('{{user}}');
+    const userPlayerName = await context.SillyTavern_API.getContext().substituteParamsExtended('{{user}}');
     
     // A hit card is dealt face up for all to see. It's added to the player's hand array.
     const dealAction = {
@@ -587,30 +609,29 @@ export const AIGame_GameHandler = {
     },
 
     stagePlayerAction(action) {
-        // Add a unique ID for undo functionality
         action.id = Date.now() + Math.random();
-        
-        // Provide immediate feedback for betting
-        if (action.type === 'bet' && action.amount) {
+    
+        if ((action.type === 'bet' || action.type === 'call') && action.amount) {
             AIGame_State.playerData.chips -= action.amount;
-            context.UI.rerenderPlayerHUD();
+            context.AudioManager_API.play('chip');
         }
-
         AIGame_State.stagedPlayerActions.push(action);
+        
+        // BUG FIX: Only re-render the HUD and staged actions, not the whole game.
+        context.UI.rerenderPlayerHUD();
         context.UI.rerenderStagedActionsAndCommitButton();
+
         Logger.log('Player action staged:', action);
     },
 
     undoStagedAction(actionId) {
         const actionIndex = AIGame_State.stagedPlayerActions.findIndex(a => a.id === actionId);
         if (actionIndex === -1) return;
-
+    
         const actionToUndo = AIGame_State.stagedPlayerActions[actionIndex];
         
-        // Refund chips if it was a bet
-        if (actionToUndo.type === 'bet' && actionToUndo.amount) {
+        if ((actionToUndo.type === 'bet' || actionToUndo.type === 'call') && actionToUndo.amount) {
             AIGame_State.playerData.chips += actionToUndo.amount;
-            context.UI.rerenderPlayerHUD();
         }
         
         AIGame_State.stagedPlayerActions.splice(actionIndex, 1);
@@ -620,16 +641,15 @@ export const AIGame_GameHandler = {
 
     undoAllStagedActions() {
         if (AIGame_State.stagedPlayerActions.length === 0) return;
-
+    
         for (const action of AIGame_State.stagedPlayerActions) {
-            if (action.type === 'bet' && action.amount) {
+            if ((action.type === 'bet' || action.type === 'call') && action.amount) {
                 AIGame_State.playerData.chips += action.amount;
             }
         }
         
-        AIGame_State.stagedPlayerActions = []; // Clear all actions
+        AIGame_State.stagedPlayerActions = [];
         
-        // Rerender HUD for chip refund and the (now empty) staged actions area
         context.UI.rerenderPlayerHUD();
         context.UI.rerenderStagedActionsAndCommitButton();
         Logger.log('All staged player actions have been undone.');
@@ -637,52 +657,97 @@ export const AIGame_GameHandler = {
 
     async commitStagedActions() {
         if (AIGame_State.stagedPlayerActions.length === 0) return;
-
+    
         const actionsToCommit = [...AIGame_State.stagedPlayerActions];
-        AIGame_State.stagedPlayerActions = []; // Clear staged actions immediately
-
-        // First, apply all state changes from the staged actions to the worldbook
+        AIGame_State.stagedPlayerActions = [];
+    
+        await context.updateWorldbook('sp_player_data', p => {
+            p.chips = AIGame_State.playerData.chips;
+            return p;
+        });
+    
+        let potIncrease = 0;
+        let newLastBet = AIGame_State.currentGameState.last_bet_amount;
+    
         for (const action of actionsToCommit) {
+            if ((action.type === 'bet' || action.type === 'call') && action.amount) {
+                potIncrease += action.amount;
+            }
             if (action.type === 'bet') {
-                 await context.updateWorldbook('sp_player_data', p => ({ ...p, chips: p.chips - action.amount }));
-                 await context.updateWorldbook('sp_game_state', s => ({ 
-                    ...s, 
-                    pot_amount: (s.pot_amount || 0) + action.amount,
-                    last_bet_amount: action.amount
-                }));
+                newLastBet = action.amount;
             }
-            // Add other action effects here if needed in the future
         }
-
-        // Now, build the prompt for the AI
-        const userPlayerName = await context.SillyTavern_Context_API.substituteParamsExtended('{{user}}');
+        await context.updateWorldbook('sp_game_state', s => {
+            s.pot_amount = (s.pot_amount || 0) + potIncrease;
+            s.last_bet_amount = newLastBet;
+            return s;
+        });
+    
         let prompt = `(系统提示：{{user}}执行了以下操作：\n`;
-
         for (const action of actionsToCommit) {
-            switch(action.type) {
-                case 'bet': prompt += `- 下注 ${action.amount} 筹码。\n`; break;
-                case 'call': prompt += `- 跟注。\n`; break;
-                case 'check': prompt += `- 过牌。\n`; break;
-                case 'fold': prompt += `- 弃牌。\n`; break;
-                case 'play_cards': prompt += `- 打出了 ${action.cards.map(c => c.rank+c.suit).join(', ')}。\n`; break;
-                case 'custom': prompt += `- 执行了自定义动作: "${action.text}"\n`; break;
-                case 'hit': prompt += `- 要牌。\n`; break;
-                case 'stand': prompt += `- 停牌。\n`; break;
-            }
-        }
-        prompt += `轮到你了。)`;
+            let actionText = '';
+            let cardText = '';
 
-        // Finally, send the prompt to the AI and refresh the UI
+            if (action.cards && action.cards.length > 0) {
+                cardText = ` ${action.cards.map(c => c.suit + c.rank).join(', ')}`;
+            }
+
+            switch(action.type) {
+                case 'bet': actionText = `- 下注 ${action.amount} 筹码。`; break;
+                case 'call': actionText = `- 跟注 ${action.amount} 筹码。`; break;
+                case 'check': actionText = `- 过牌。`; break;
+                case 'fold': actionText = `- 弃牌${cardText}。`; break;
+                case 'play_cards': actionText = `- 出牌${cardText}。`; break;
+                case 'custom': actionText = `- 执行了自定义动作: "${action.text}"${cardText}。`; break;
+                case 'hit': actionText = `- 要牌。`; break;
+                case 'stand': actionText = `- 停牌。`; break;
+            }
+            prompt += `${actionText}\n`;
+        }
+        prompt += `)`;
+    
         await context.TavernHelper_API.triggerSlash(`/setinput ${JSON.stringify(prompt)}`);
-        context.SillyTavern_Context_API.generate();
-        await context.fetchAllGameData(); // Re-fetch to ensure UI is perfectly synced with worldbook
+        context.SillyTavern_API.getContext().generate();
+        await context.fetchAllGameData();
     },
     
+    async playerGoesAllIn() {
+        const allInAmount = AIGame_State.playerData.chips;
+        if (allInAmount <= 0) {
+            Logger.log("Player tried to go all-in with 0 chips. No action taken.");
+            context.toastr_API.info("你已经没有筹码了！");
+            return;
+        }
+
+        Logger.log(`Player goes all-in with ${allInAmount} chips.`);
+
+        // Atomically update world books for player chips and game pot
+        await context.updateWorldbook('sp_player_data', p => {
+            p.chips = 0;
+            return p;
+        });
+        await context.updateWorldbook('sp_game_state', s => {
+            s.pot_amount = (s.pot_amount || 0) + allInAmount;
+            s.last_bet_amount = allInAmount; // The all-in amount is now the bet to call
+            return s;
+        });
+
+        // Construct an objective prompt for the AI
+        const prompt = `(系统提示：{{user}}选择了 All In，将所有筹码都推向了彩池中央。)`;
+        
+        // Immediately send the prompt to the AI to continue the game loop
+        await context.TavernHelper_API.triggerSlash(`/setinput ${JSON.stringify(prompt)}`);
+        context.SillyTavern_API.getContext().generate();
+        
+        // Refresh the entire game state to reflect the all-in action on the UI
+        await context.fetchAllGameData();
+    },
+
     async attemptEscape() {
         Logger.log('Player attempts to escape...');
         const prompt = `(系统提示：{{user}}尝试从当前的遭遇中逃跑。请根据当前情况（例如对手是谁，当前是否在牌局中）来决定逃跑是否成功，并输出对应的 [Game:End] 或 [Event:Modify] 指令。)`;
         context.toastr_API.info("你的对手正在决定是否让你逃跑...");
         await context.TavernHelper_API.triggerSlash(`/setinput ${JSON.stringify(prompt)}`);
-        context.SillyTavern_Context_API.generate();
+        context.SillyTavern_API.getContext().generate();
     }
 };

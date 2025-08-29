@@ -46,9 +46,9 @@ export const AIGame_ItemHandler = {
             return;
         }
 
-        const confirmResult = await context.SillyTavern_Context_API.callGenericPopup(
+        const confirmResult = await context.SillyTavern_API.getContext().callGenericPopup(
             `你确定要使用 **${item.name}** 吗？\n\n*效果: ${item.description}*`,
-            context.SillyTavern_Context_API.POPUP_TYPE.CONFIRM,
+            context.SillyTavern_API.getContext().POPUP_TYPE.CONFIRM,
             '', 
             { title: '使用道具' }
         );
@@ -71,7 +71,7 @@ export const AIGame_ItemHandler = {
             // New standard flow: Prompt the AI to resolve the item's effect.
             const prompt = `(系统提示：{{user}}使用了道具 [名称: ${item.name}, 描述: ${item.description}])`;
             await context.TavernHelper_API.triggerSlash(`/setinput ${JSON.stringify(prompt)}`);
-            context.SillyTavern_Context_API.generate();
+            context.SillyTavern_API.getContext().generate();
             context.toastr_API.info(`你使用了 [${item.name}]... AI正在处理效果。`);
         }
 
