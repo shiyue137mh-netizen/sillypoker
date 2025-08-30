@@ -21,7 +21,20 @@
 
 ### 3. 玩家下注并开始发牌
 
--   **(前端发送)**: `(系统提示：玩家选择了“下注”，金额为100。)`
+-   **(前端发送)**:
+    `(系统提示：玩家选择了“下注”，金额为100。)`
+    `<context>`
+    `game_type: Blackjack`
+    `current_turn: 庄家`
+    `pot_amount: 100`
+    `board_cards: `
+    `player_chips: 900`
+    `enemy_name: 庄家`
+    `enemy_chips: 1000`
+    `map_floor: 1`
+    `map_node_type: enemy`
+    `map_progress: 0%`
+    `</context>`
 
 -   **角色响应 (单次输出后停止)**:
 
@@ -36,7 +49,20 @@
 
 ### 4. 玩家的回合：要牌 (Hit)
 
--   **(前端发送)**: `(系统提示：玩家选择了“要牌”。)`
+-   **(前端发送)**:
+    `(系统提示：玩家选择了“要牌”。)`
+    `<context>`
+    `game_type: Blackjack`
+    `current_turn: 庄家`
+    `pot_amount: 100`
+    `board_cards: `
+    `player_chips: 900`
+    `enemy_name: 庄家`
+    `enemy_chips: 1000`
+    `map_floor: 1`
+    `map_node_type: enemy`
+    `map_progress: 0%`
+    `</context>`
 
 -   **角色响应 (单次输出后停止)**:
 
@@ -49,7 +75,20 @@
 
 ### 5. 玩家的回合：停牌 (Stand)
 
--   **(前端发送)**: `(系统提示：玩家选择了“停牌”。)`
+-   **(前端发送)**:
+    `(系统提示：玩家选择了“停牌”。)`
+    `<context>`
+    `game_type: Blackjack`
+    `current_turn: 庄家`
+    `pot_amount: 100`
+    `board_cards: `
+    `player_chips: 900`
+    `enemy_name: 庄家`
+    `enemy_chips: 1000`
+    `map_floor: 1`
+    `map_node_type: enemy`
+    `map_progress: 0%`
+    `</context>`
 
 ### 6. 庄家的回合与游戏结算
 
@@ -97,7 +136,20 @@
 
 ### 4. 玩家响应
 
--   **(前端发送)**: `(系统提示：玩家选择了“跟注”。)`
+-   **(前端发送)**:
+    `(系统提示：玩家选择了“跟注”。)`
+    `<context>`
+    `game_type: TexasHoldem`
+    `current_turn: 拦路劫匪`
+    `pot_amount: 100`
+    `board_cards: `
+    `player_chips: 950`
+    `enemy_name: 拦路劫匪`
+    `enemy_chips: 750`
+    `map_floor: 1`
+    `map_node_type: enemy`
+    `map_progress: 12%`
+    `</context>`
 
 ### 5. 翻牌轮 (Flop)
 
@@ -112,7 +164,20 @@
 
 ### 6. 翻牌圈下注
 
--   **(前端发送)**: `(系统提示：玩家选择了“过牌”。)`
+-   **(前端发送)**:
+    `(系统提示：玩家选择了“过牌”。)`
+    `<context>`
+    `game_type: TexasHoldem`
+    `current_turn: 拦路劫匪`
+    `pot_amount: 100`
+    `board_cards: ♠A, ♥K, ♦5`
+    `player_chips: 950`
+    `enemy_name: 拦路劫匪`
+    `enemy_chips: 750`
+    `map_floor: 1`
+    `map_node_type: enemy`
+    `map_progress: 12%`
+    `</context>`
 
 -   **角色响应 (单次输出后停止)**:
 
@@ -134,7 +199,20 @@
 
 ### 8. 转牌圈下注与河牌圈
 
--   **(前端发送)**: `(系统提示：玩家选择了“下注”，金额为200。)`
+-   **(前端发送)**:
+    `(系统提示：玩家选择了“下注”，金额为200。)`
+    `<context>`
+    `game_type: TexasHoldem`
+    `current_turn: 拦路劫匪`
+    `pot_amount: 300`
+    `board_cards: ♠A, ♥K, ♦5, ♣J`
+    `player_chips: 750`
+    `enemy_name: 拦路劫匪`
+    `enemy_chips: 750`
+    `map_floor: 1`
+    `map_node_type: enemy`
+    `map_progress: 12%`
+    `</context>`
 
 -   **角色响应 (单次输出后停止)**:
 
@@ -148,7 +226,20 @@
 
 ### 9. 河牌圈最终下注
 
--   **(前端发送)**: `(系统提示：玩家选择了“下注”，金额为500。)`
+-   **(前端发送)**:
+    `(系统提示：玩家选择了“下注”，金额为500。)`
+    `<context>`
+    `game_type: TexasHoldem`
+    `current_turn: 拦路劫匪`
+    `pot_amount: 1000`
+    `board_cards: ♠A, ♥K, ♦5, ♣J, ♥Q`
+    `player_chips: 250`
+    `enemy_name: 拦路劫匪`
+    `enemy_chips: 550`
+    `map_floor: 1`
+    `map_node_type: enemy`
+    `map_progress: 12%`
+    `</context>`
 
 -   **角色响应 (单次输出后停止)**:
 
@@ -159,7 +250,20 @@
 
 ### 10. 玩家最终决定
 
--   **(前端发送)**: `(系统提示：玩家选择了“跟注”。)`
+-   **(前端发送)**:
+    `(系统提示：玩家选择了“跟注”。)`
+    `<context>`
+    `game_type: TexasHoldem`
+    `current_turn: 拦路劫匪`
+    `pot_amount: 1550`
+    `board_cards: ♠A, ♥K, ♦5, ♣J, ♥Q`
+    `player_chips: 0`
+    `enemy_name: 拦路劫匪`
+    `enemy_chips: 0`
+    `map_floor: 1`
+    `map_node_type: enemy`
+    `map_progress: 12%`
+    `</context>`
 
 ### 11. 摊牌与结算
 

@@ -6,6 +6,7 @@ export const AIGame_Config = {
     // DOM Element IDs
     PANEL_ID: 'sillypoker-panel',
     TOGGLE_BUTTON_ID: 'sillypoker-toggle-btn',
+    STORAGE_KEY_UI: 'sillypoker-ui-state-v3', // MODIFIED: Updated key for new state structure
 
     // Lorebook (World Book) Configuration
     LOREBOOK_PREFIX: 'SillyPoker_Data_',

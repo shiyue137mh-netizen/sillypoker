@@ -9,17 +9,6 @@
     --revealed-glow-color: #4ade80; /* Bright Green */
 }
 
-@keyframes card-entry-animation {
-    from {
-        transform: translateY(250px) rotate(15deg);
-        opacity: 0;
-    }
-    to {
-        transform: translateY(0) rotate(0);
-        opacity: 1;
-    }
-}
-
 /* --- Card & Hand Styles --- */
 #sillypoker-panel .hand { 
     display: flex; 
@@ -72,12 +61,6 @@
     user-select: none; 
     display: block;
     transition: transform 0.2s ease-out, box-shadow 0.2s ease-out, border-color 0.2s ease-out;
-}
-
-#sillypoker-panel .card.animate-in {
-    opacity: 0;
-    animation: card-entry-animation 0.6s cubic-bezier(0.25, 1, 0.5, 1) forwards;
-    animation-delay: var(--animation-delay, 0s);
 }
 
 #sillypoker-panel .card.selected {
@@ -160,7 +143,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 10px;
+    font-size: 0.5em;
     cursor: pointer;
     opacity: 0;
     transition: opacity 0.2s ease-in-out, background-color 0.2s ease-in-out;
@@ -194,10 +177,10 @@
     transform: rotate(180deg);
 }
 .card .card-corner-rank {
-    font-size: 1.2rem;
+    font-size: 1.2em;
 }
 .card .card-corner-suit {
-    font-size: 1rem;
+    font-size: 1em;
     margin-top: -2px;
 }
 .card .card-center-suit {
@@ -205,19 +188,19 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    font-size: 3.5rem;
+    font-size: 3.5em;
     opacity: 0.9;
 }
 /* Joker specific styles */
 .card .joker-text {
     position: absolute;
-    font-size: 0.7rem;
+    font-size: 0.7em;
     font-weight: bold;
 }
 .card .joker-text.top-left { top: 5px; left: 7px; }
 .card .joker-text.bottom-right { bottom: 5px; right: 7px; transform: rotate(180deg); }
 .card .joker-icon {
-    font-size: 3.5rem;
+    font-size: 3.5em;
     position: absolute;
     top: 50%;
     left: 50%;
@@ -231,4 +214,22 @@
 }
 .card.suit-black {
     color: var(--black-suit);
+}
+
+/* --- Card Dealing Animation --- */
+.animated-deal-card {
+    position: absolute;
+    width: 80px;
+    height: 112px;
+    background-image: url('../assets/images/card_back.png');
+    background-size: cover;
+    background-position: center;
+    border: 1px solid #2a4b6e;
+    border-radius: 6px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+    z-index: 1000;
+    pointer-events: none;
+    transition: all 0.5s cubic-bezier(0.25, 1, 0.5, 1);
+    transform: scale(1.2); /* Start slightly larger */
+    opacity: 1;
 }

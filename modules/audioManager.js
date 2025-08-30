@@ -23,11 +23,7 @@ const sounds = {
 
 const bgmTracks = [
     { name: 'Boss Blind', path: 'assets/BGM/Boss Blind.mp3' },
-    { name: 'Main Theme', path: 'assets/BGM/Main Theme.mp3' },
-    { name: 'Tarot Pack', path: 'assets/BGM/Tarot Pack.mp3' },
-    { name: 'Shop Theme', path: 'assets/BGM/Shop Theme.mp3' },
-    { name: 'Planet Pack', path: 'assets/BGM/Planet Pack.mp3' },
-    { name: 'Slay The Spire', path: 'assets/BGM/Slay The Spire.mp3' }
+    { name: 'Main Theme', path: 'assets/BGM/Main Theme.mp3' }
 ];
 let bgmAudioElement = null;
 

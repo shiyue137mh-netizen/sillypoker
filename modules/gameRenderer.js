@@ -5,6 +5,7 @@
 import { AIGame_State } from './state.js';
 import { AIGame_Config } from '../config.js'; // Import config for emotes
 import { Logger } from './logger.js';
+import { getChipTier } from './utils.js';
 
 // No longer needs dependencies after finding the root cause.
 export function initRenderer(deps) {
@@ -22,7 +23,6 @@ export function initRenderer(deps) {
 function getCardHTML(card, locationInfo = {}, animationIndex = 0) {
     if (!card) return '';
 
-    const animationDelay = `${animationIndex * 120}ms`;
     const { location, enemyName, index } = locationInfo;
 
     const isPlayerCard = location === 'player_hand';
@@ -41,7 +41,7 @@ function getCardHTML(card, locationInfo = {}, animationIndex = 0) {
 
     if (!showFace) {
         // BUG FIX: The delete button is now included in the card back's HTML.
-        return `<div class="card card-back" style="--animation-delay: ${animationDelay};" ${dataAttrs}>${deleteButtonHTML}</div>`;
+        return `<div class="card card-back" ${dataAttrs}>${deleteButtonHTML}</div>`;
     }
 
     const suitSymbol = { '♥': '♥', '♦': '♦', '♣': '♣', '♠': '♠' }[card.suit] || card.suit;
@@ -56,7 +56,7 @@ function getCardHTML(card, locationInfo = {}, animationIndex = 0) {
          const jokerText = card.rank === 'Big Joker' ? 'JOKER' : 'JOKER';
          const jokerColorClass = card.rank === 'Big Joker' ? 'suit-red' : 'suit-black';
          return `
-            <div class="card ${jokerColorClass}" style="--animation-delay: ${animationDelay};" ${dataAttrs}>
+            <div class="card ${jokerColorClass}" ${dataAttrs}>
                  ${deleteButtonHTML}
                  <div class="joker-text top-left">${jokerText}</div>
                  <div class="joker-icon">${suitSymbol}</div>
@@ -80,7 +80,7 @@ function getCardHTML(card, locationInfo = {}, animationIndex = 0) {
     `;
 
     return `
-        <div class="${cardClasses}" style="--animation-delay: ${animationDelay};" ${dataAttrs}>
+        <div class="${cardClasses}" ${dataAttrs}>
             ${deleteButtonHTML}
             ${centralContentHTML}
         </div>
@@ -111,6 +111,7 @@ export function getStagedActionsHTML(stagedActions) {
             case 'custom': text = `动作: ${action.text}${cardText}`; break;
             case 'hit': text = '要牌'; break;
             case 'stand': text = '停牌'; break;
+            case 'emote': text = `台词: "${action.text.substring(0, 10)}..."`; break;
             default: text = action.type;
         }
         return `
@@ -121,7 +122,7 @@ export function getStagedActionsHTML(stagedActions) {
         `;
     }).join('');
 
-    return `<div class="staged-actions-container">${actionsHTML}</div>`;
+    return `${actionsHTML}`; // No surrounding container, it's already in the main template
 }
 
 
@@ -211,10 +212,13 @@ export function getGameTableHTML(playerData, enemyData, gameState) {
     const potAmount = gameState?.pot_amount ?? 0;
     const turnActiveClass = gameState?.current_turn ? 'turn-active' : '';
     
+    const isPlayerTurn = gameState?.current_turn === userPlayerName;
+    const dealerName = gameState?.players?.[gameState.players.length - 1];
+
     let cardAnimationIndex = 0;
 
     // --- Player Area (always at the bottom) ---
-    const isPlayerTurn = gameState?.current_turn === userPlayerName;
+    const isPlayerDealer = dealerName === userPlayerName;
     const playerHandClasses = `hand horizontal-hand ${playerHand.length > 5 ? 'large-hand' : ''}`;
     const playerHandHTML = playerHand.map((card, i) => getCardHTML(card, { location: 'player_hand', index: i }, cardAnimationIndex++)).join('');
     const playerAreaHTML = `
@@ -233,7 +237,11 @@ export function getGameTableHTML(playerData, enemyData, gameState) {
 
     const createOpponentHTML = (enemy, positionClass, handLayoutClass, areaId, index) => {
         const isEnemyTurn = gameState?.current_turn === enemy.name;
+        const isEnemyDealer = dealerName === enemy.name;
+        const dealerIcon = isEnemyDealer ? '👑' : '';
         const enemyHand = enemy.hand || [];
+        const enemyChips = enemy.chips ?? 0;
+        const chipTier = getChipTier(enemyChips);
         const enemyHandClasses = `hand ${handLayoutClass} ${enemyHand.length > 5 ? 'large-hand' : ''}`;
         const enemyHandHTML = enemyHand.map((card, i) => getCardHTML(card, { location: 'enemy_hand', enemyName: enemy.name, index: i }, cardAnimationIndex++)).join('');
         const thinkingIndicator = isEnemyTurn ? '<span class="thinking-indicator"></span>' : '';
@@ -242,11 +250,11 @@ export function getGameTableHTML(playerData, enemyData, gameState) {
             <div id="${areaId}" class="player-position-container ${positionClass} ${isEnemyTurn ? 'active-turn' : ''}" data-enemy-name="${enemy.name}">
                 <div class="opponent-container">
                     <div class="opponent-info">
-                        <div class="opponent-name">${enemy.name || 'Opponent'}${thinkingIndicator}</div>
+                        <div class="opponent-name">${dealerIcon} ${enemy.name || 'Opponent'}${thinkingIndicator}</div>
                         <div class="opponent-style">${enemy.play_style || '...'}</div>
-                        <div class="opponent-chips">
+                        <div class="opponent-chips" data-chip-tier="${chipTier}">
                             <i class="fas fa-coins"></i>
-                            <span>${enemy.chips?.toLocaleString() || '0'}</span>
+                            <span>${enemyChips.toLocaleString()}</span>
                         </div>
                     </div>
                     <div class="${enemyHandClasses}">${enemyHandHTML}</div>
@@ -285,6 +293,7 @@ export function getGameTableHTML(playerData, enemyData, gameState) {
     const customWagersHTML = customWagers.map(wager => `
         <div class="custom-wager-item">${wager.player} 赌上了: <strong>${wager.item}</strong></div>
     `).join('');
+    const potTier = getChipTier(potAmount);
     
     // --- Final Assembly ---
     return `
@@ -297,7 +306,7 @@ export function getGameTableHTML(playerData, enemyData, gameState) {
                 <div class="board-area-container">
                     <div id="pot-area" class="pot">
                         <div>彩池</div>
-                        <div class="pot-amount">$${potAmount.toLocaleString()}</div>
+                        <div class="pot-amount" data-chip-tier="${potTier}">$${potAmount.toLocaleString()}</div>
                         <div class="custom-wagers-area">${customWagersHTML}</div>
                     </div>
                     <div class="community-cards hand horizontal-hand">${boardCardsHTML}</div>
@@ -307,6 +316,14 @@ export function getGameTableHTML(playerData, enemyData, gameState) {
                 ${opponentsHTML}
             </div>
             ${getEmoteWheelHTML()}
+            <div class="game-history-container">
+                <button class="game-history-button" title="查看游戏历史">
+                    <i class="fas fa-history"></i>
+                </button>
+                <div class="history-panel-overlay">
+                    <div class="history-log-list"></div>
+                </div>
+            </div>
         </div>
     `;
 }

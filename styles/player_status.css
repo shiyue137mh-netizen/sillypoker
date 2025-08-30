@@ -18,7 +18,7 @@
     color: #9ca3af;
     padding: 4px 10px;
     border-radius: 12px;
-    font-size: 0.8rem;
+    font-size: 0.8em;
     font-weight: 500;
     border: 1px solid var(--status-border);
     white-space: nowrap;
@@ -52,13 +52,13 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    font-size: 1rem;
+    font-size: 1em;
     font-weight: 500;
     color: var(--gold-accent);
 }
 
 #sillypoker-panel .chips-display .fa-coins {
-    font-size: 0.9rem;
+    font-size: 0.9em;
 }
 
 /* Status Effects */
@@ -73,7 +73,7 @@
 #sillypoker-panel .status-effect-icon {
     width: 24px;
     height: 24px;
-    font-size: 1.2rem;
+    font-size: 1.2em;
     background: #374151;
     border-radius: 50%;
     display: inline-flex;
@@ -110,7 +110,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 16px;
+    font-size: 0.8em;
 }
 
 #sillypoker-panel .inventory-panel {
@@ -153,7 +153,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 3rem;
+    font-size: 3em;
     color: #d1d5db;
     transition: all 0.2s ease;
     user-select: none;
@@ -173,6 +173,17 @@
 #sillypoker-panel .inventory-item.empty {
     background: rgba(17, 24, 39, 0.5);
     border-style: dashed;
-    font-size: 1rem;
+    font-size: 1em;
     color: #6b7280;
+}
+
+/* ADDED: Heart beat animation for critical health */
+@keyframes heart-beat-animation {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+.heart-beat {
+    animation: heart-beat-animation 1.5s infinite ease-in-out;
 }

@@ -2,8 +2,8 @@
 {
   "display_name": "AI Card Table",
   "author": "AI Engineer",
-  "version": "8.4.0",
-  "description": "[架构重构 & 新功能] 重构了指令处理架构，使其更清晰、可扩展。新增了“下一层”功能，允许在击败首领后继续挑战。增加了音效反馈和逃跑机制，提升了游戏体验。",
+  "version": "8.5.0",
+  "description": "[功能新增] 新增剧情同步界面，将AI的最新回复直接显示在面板中，并提供整合了游戏上下文的专用输入框，实现叙事与操作的无缝结合。",
   "js": "script.js",
   "css": "style.css",
   "html": "panel.html"

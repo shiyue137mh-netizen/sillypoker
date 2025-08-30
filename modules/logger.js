@@ -1,4 +1,3 @@
-
 /**
  * AI Card Table Extension - Centralized Logger
  * @description Provides console logging, stores logs for UI display, and emits update events.

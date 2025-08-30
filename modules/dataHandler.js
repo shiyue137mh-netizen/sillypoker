@@ -16,7 +16,7 @@ import { AIGame_MapHandler } from './mapHandler.js';
 import { AIGame_ItemHandler } from './itemHandler.js';
 
 
-let SillyTavern_API, TavernHelper_API, toastr_API, UI, parentWin, AudioManager_API;
+let SillyTavern_API, TavernHelper_API, toastr_API, UI, parentWin, AudioManager_API, History_API;
 
 // Sub-handler instances
 let GameHandler, EntityHandler, MapHandler, ItemHandler;
@@ -159,6 +159,10 @@ async function fetchAllGameData() {
     try {
         const entries = await TavernHelper_API.getWorldbook(lorebookName);
         let runInProgress = false;
+
+        // Store previous health for animation triggers
+        AIGame_State.previousPlayerData = { ...AIGame_State.playerData };
+
         for (const key of AIGame_Config.LOREBOOK_ENTRY_KEYS) {
             const stateKey = KEY_TO_STATE_MAP[key];
             if (!stateKey) continue; 
@@ -183,6 +187,9 @@ async function fetchAllGameData() {
     // This prevents animations (like dealing cards) from running on hidden elements.
     if (AIGame_State.isPanelVisible) {
         UI.renderPanelContent();
+    } else {
+        // If panel is closed, still update the toggle button's state
+        UI.updateToggleButtonState();
     }
 }
 
@@ -203,6 +210,9 @@ async function mainProcessor(text) {
                     break;
                 case 'Event':
                     await EntityHandler.handleCommand(command);
+                    break;
+                case 'Map':
+                    await MapHandler.handleCommand(command);
                     break;
                 case 'Item':
                     await ItemHandler.handleCommand(command);
@@ -305,11 +315,19 @@ async function processPendingDealActions() {
 
     toastr_API.info("荷官正在发牌...", "发牌", { timeOut: 1500, closeButton: false, progressBar: false, positionClass: "toast-top-left", preventDuplicates: true });
     Logger.log('正在处理待处理的发牌动作...');
-
+    
     const totalCardsNeeded = actions.reduce((sum, action) => sum + (action.count || 0), 0);
-    if (totalCardsNeeded === 0) return;
+    if (totalCardsNeeded === 0) {
+        await updateWorldbook('sp_game_state', s => { delete s.pending_deal_actions; return s; });
+        await fetchAllGameData();
+        return;
+    }
 
-    AudioManager_API.playStaggered('deal', totalCardsNeeded, 120);
+    // FIX: Play sound effect before animating
+    AudioManager_API.playStaggered('deal', totalCardsNeeded, 80);
+
+    // RESTORED: The animation call was missing. This is the crucial fix.
+    await UI.animateDeal(actions);
 
     let drawnCards = [];
     let deckSizeBeforeDeal = 0; 
@@ -344,180 +362,348 @@ async function processPendingDealActions() {
         cardsToDistribute.forEach(card => { card.visibility = action.visibility || 'owner'; });
 
         if (action.target === 'player') distribution.player.push(...cardsToDistribute);
-        else if (action.target === 'enemy' && action.name && distribution.enemies[action.name]) distribution.enemies[action.name].push(...cardsToDistribute);
+        else if (action.target === 'enemy' && action.name) {
+            if (distribution.enemies[action.name]) {
+                distribution.enemies[action.name].push(...cardsToDistribute);
+            } else {
+                Logger.warn(`发牌目标敌人 "${action.name}" 不存在。`);
+            }
+        }
         else if (action.target === 'board') distribution.board.push(...cardsToDistribute);
     }
-
-    if (distribution.player.length > 0) await updateWorldbook('sp_player_cards', data => ({ ...data, current_hand: [...(data.current_hand || []), ...distribution.player] }));
-    if (Object.values(distribution.enemies).some(c => c.length > 0)) {
+    
+    if (distribution.player.length > 0) {
+        await updateWorldbook('sp_player_cards', data => {
+            data.current_hand.push(...distribution.player);
+            return data;
+        });
+    }
+    if (Object.values(distribution.enemies).some(arr => arr.length > 0)) {
         await updateWorldbook('sp_enemy_data', data => {
-            if (!data.enemies) data.enemies = [];
-            data.enemies.forEach(enemy => {
-                if (distribution.enemies[enemy.name]?.length > 0) {
-                    enemy.hand = [...(enemy.hand || []), ...distribution.enemies[enemy.name]];
+            Object.keys(distribution.enemies).forEach(name => {
+                const enemy = data.enemies.find(e => e.name === name);
+                if (enemy) {
+                    enemy.hand.push(...distribution.enemies[name]);
                 }
             });
             return data;
         });
     }
     if (distribution.board.length > 0) {
-        await updateWorldbook('sp_game_state', data => ({ 
-            ...data, 
-            board_cards: [...(data.board_cards || []), ...distribution.board],
-            last_bet_amount: 0
-        }));
+        await updateWorldbook('sp_game_state', data => {
+            data.board_cards.push(...distribution.board);
+            return data;
+        });
     }
 
-    // Clear the pending actions
-    await updateWorldbook('sp_game_state', data => {
-        delete data.pending_deal_actions;
-        return data;
+    await updateWorldbook('sp_game_state', s => {
+        delete s.pending_deal_actions;
+        return s;
     });
-    
-    // Set flag to trigger animation on next render
-    AIGame_State.isDealing = true;
 
-    // Finally, refresh the state and UI
     await fetchAllGameData();
+    Logger.success('发牌动作处理完毕。');
+}
+
+/**
+ * Stages a player action for later commit.
+ * @param {object} action - The action object, e.g., { type: 'bet', amount: 100 }
+ */
+async function stagePlayerAction(action) {
+    const playerChips = AIGame_State.playerData.chips;
+    let soundToPlay = 'click1';
+
+    // Validation
+    if (action.type === 'bet' || action.type === 'call') {
+        if (action.amount > playerChips) {
+            toastr_API.warning('你的筹码不足！');
+            return;
+        }
+        soundToPlay = 'chip';
+    }
+
+    // Add a unique ID for removal
+    action.id = Date.now() + Math.random();
+    AIGame_State.stagedPlayerActions.push(action);
+
+    await AudioManager_API.play(soundToPlay);
+    UI.renderActiveTabContent(); // Re-render to show staged action and update UI
+}
+
+async function undoStagedAction(actionId) {
+    const actionIndex = AIGame_State.stagedPlayerActions.findIndex(a => a.id === actionId);
+    if (actionIndex > -1) {
+        AIGame_State.stagedPlayerActions.splice(actionIndex, 1);
+        await AudioManager_API.play('click2');
+        UI.renderActiveTabContent();
+    }
+}
+
+async function undoAllStagedActions() {
+    if (AIGame_State.stagedPlayerActions.length > 0) {
+        AIGame_State.stagedPlayerActions = [];
+        await AudioManager_API.play('click2');
+        UI.renderActiveTabContent();
+    }
+}
+
+/**
+ * Commits all staged player actions, updates world state, and sends a prompt to the AI.
+ */
+async function commitStagedActions() {
+    if (AIGame_State.stagedPlayerActions.length === 0) {
+        toastr_API.info('你还没有执行任何操作。');
+        return;
+    }
+
+    let promptLines = [];
+    const actionsToCommit = [...AIGame_State.stagedPlayerActions];
+    AIGame_State.stagedPlayerActions = [];
+
+    // First, apply all state changes from the actions
+    for (const action of actionsToCommit) {
+        // Here we would apply the state changes for real
+        if (action.type === 'bet') {
+            await GameHandler.handleCommand({ category: 'Action', type: 'Bet', data: { player_name: '{{user}}', amount: action.amount } });
+            promptLines.push(`- 下注 ${action.amount} 筹码。`);
+        } else if (action.type === 'call') {
+            await GameHandler.handleCommand({ category: 'Action', type: 'Call', data: { player_name: '{{user}}', amount: action.amount } });
+            promptLines.push(`- 跟注 ${action.amount} 筹码。`);
+        } else if (action.type === 'check') {
+            promptLines.push('- 过牌。');
+        } else if (action.type === 'fold') {
+            promptLines.push('- 弃牌。');
+        } else if (action.type === 'hit') {
+            promptLines.push('- 要牌。');
+        } else if (action.type === 'stand') {
+            promptLines.push('- 停牌。');
+        } else if (action.type === 'emote') {
+            promptLines.push(`- 说了台词: "${action.text}"`);
+        } else if (action.type === 'custom') {
+            let actionText = `执行了自定义动作: "${action.text}"`;
+            if (action.cards && action.cards.length > 0) {
+                actionText += ` 并选择了卡牌 [${action.cards.map(c => c.suit+c.rank).join(', ')}]`;
+            }
+            promptLines.push(`- ${actionText}。`);
+        } else if (action.type === 'play_cards') {
+            let actionText = `打出了卡牌 [${action.cards.map(c => c.suit+c.rank).join(', ')}]`;
+            promptLines.push(`- ${actionText}。`);
+        }
+        // Add more action handlers as needed
+    }
+
+    const { currentGameState, enemyData, playerData } = AIGame_State;
+    const enemy = enemyData.enemies?.[0]; // Assuming single enemy for now
+
+    const nextTurnIndex = (currentGameState.players.indexOf(currentGameState.current_turn) + 1) % currentGameState.players.length;
+    const nextTurnPlayer = currentGameState.players[nextTurnIndex];
+    
+
+    // Construct the context block
+    let contextLines = [];
+    if(currentGameState) {
+        contextLines.push(`game_type: ${currentGameState.game_type}`);
+        contextLines.push(`current_turn: ${currentGameState.current_turn}`);
+        contextLines.push(`next_turn: ${nextTurnPlayer}`);
+        contextLines.push(`pot_amount: ${currentGameState.pot_amount}`);
+        contextLines.push(`board_cards: ${currentGameState.board_cards?.map(c => c.suit + c.rank).join(', ') || ''}`);
+    }
+    if (playerData) {
+        contextLines.push(`player_chips: ${playerData.chips}`);
+    }
+    if (enemy) {
+        contextLines.push(`enemy_name: ${enemy.name}`);
+        contextLines.push(`enemy_chips: ${enemy.chips}`);
+    }
+
+    const contextBlock = `{{newline}}<context>{{newline}}${contextLines.join('{{newline}}')}{{newline}}</context>`;
+    const finalPrompt = `(系统提示：{{user}}执行了以下操作：\n${promptLines.join('\n')}\n)${contextBlock}`;
+
+    await TavernHelper_API.triggerSlash(`/setinput ${JSON.stringify(finalPrompt)}`);
+    SillyTavern_API.getContext().generate();
+
+    await fetchAllGameData();
+}
+
+/**
+ * Resets all game data and returns the user to the difficulty selection screen.
+ */
+async function resetAllGameData() {
+    Logger.log('重置所有游戏数据...');
+    AIGame_State.runInProgress = false;
+    AIGame_State.mapData = null;
+    AIGame_State.playerData = null;
+    AIGame_State.stagedPlayerActions = []; // Clear any pending actions
+    
+    await updateWorldbook('sp_map_data', () => ({})); // Clear map data
+    
+    // Use the template from the config to reset player data
+    const playerTemplate = JSON.parse(AIGame_Config.INITIAL_LOREBOOK_ENTRIES.find(e => e.name === 'sp_player_data').content);
+    await updateWorldbook('sp_player_data', () => playerTemplate);
+    
+    await updateWorldbook('sp_game_state', () => ({}));
+    await updateWorldbook('sp_enemy_data', () => ({ enemies: [] }));
+
+    await fetchAllGameData(); // This will re-render the UI to the difficulty screen
+    toastr_API.success("挑战已重置。");
+}
+
+async function advanceToNextFloor() {
+    Logger.log('Advancing to the next floor...');
+    AudioManager_API.play('elevator_ding');
+    const newLayer = (AIGame_State.mapData?.mapLayer || 0) + 1;
+    const newMap = generateMapData(newLayer);
+    
+    await updateWorldbook('sp_map_data', () => newMap);
+    toastr_API.success(`你已到达赌场第 ${newLayer + 1} 层！`);
+    
+    AIGame_State.selectedMapNodeId = null; 
+    AIGame_State.mapTransformInitialized = false; // Force re-centering on the new map
+    await fetchAllGameData();
+}
+
+/**
+ * Sends a purely narrative message from the player to the AI.
+ * @param {string} text The narrative text from the player.
+ */
+async function sendNarrativeMessage(text) {
+    if (!text) return;
+    Logger.log(`Sending narrative message: "${text}"`);
+
+    const { currentGameState } = AIGame_State;
+    const isPlayerTurn = currentGameState?.current_turn === (await SillyTavern_API.getContext().substituteParamsExtended('{{user}}'));
+    
+    let finalPrompt;
+    if (isPlayerTurn) {
+        finalPrompt = `(系统提示：在他们的回合中，{{user}}没有执行任何游戏动作，而是选择说或做：\n\n${text}\n\n现在轮到你了。)`;
+    } else {
+        finalPrompt = `(系统提示：在你的回合中，{{user}}打断并说或做：\n\n${text}\n\n现在仍然是你的回合，请继续行动。)`;
+    }
+    
+    await TavernHelper_API.triggerSlash(`/setinput ${JSON.stringify(finalPrompt)}`);
+    SillyTavern_API.getContext().generate();
 }
 
 
 export const AIGame_DataHandler = {
-    init: function(deps, uiHandler, audioManager) {
-        SillyTavern_API = deps.st; // Store the main SillyTavern API object
+    init: function(deps, uiHandler, audioManager, historyApi) {
+        SillyTavern_API = deps.st;
         TavernHelper_API = deps.th;
         toastr_API = deps.toastr;
         UI = uiHandler;
         parentWin = deps.win;
         AudioManager_API = audioManager;
+        History_API = historyApi;
 
+        // Initialize sub-handlers
         const handlerContext = {
-            updateWorldbook,
-            fetchAllGameData,
-            toastr_API,
+            SillyTavern_API,
             TavernHelper_API,
-            SillyTavern_API, // Pass the main API object, not the stale context
-            getOrCreateGameLorebook,
+            toastr_API,
             UI,
             parentWin,
             AudioManager_API,
+            AIGame_History: History_API,
+            fetchAllGameData,
+            updateWorldbook,
+            resetAllGameData
         };
-        
         GameHandler = AIGame_GameHandler;
         EntityHandler = AIGame_EntityHandler;
         MapHandler = AIGame_MapHandler;
         ItemHandler = AIGame_ItemHandler;
-
+        
         GameHandler.init(handlerContext);
         EntityHandler.init(handlerContext);
         MapHandler.init(handlerContext);
         ItemHandler.init(handlerContext);
     },
-
-    mainProcessor,
-    fetchAllGameData,
-    deleteCardFromUI,
-    surrender,
-    begForMercy,
-    processPendingDealActions,
     
-    clearLorebookCache() {
+    checkGameBookExists: async function() {
+        const lorebookName = await getOrCreateGameLorebook();
+        AIGame_State.hasGameBook = !!lorebookName;
+        await fetchAllGameData();
+    },
+
+    createGameBookEntries: async function() {
+        const lorebookName = await getOrCreateGameLorebook();
+        if (lorebookName) {
+            toastr_API.success("游戏世界书已成功创建/验证！");
+            AIGame_State.hasGameBook = true;
+            await fetchAllGameData();
+        } else {
+            toastr_API.error("创建游戏世界书失败。");
+        }
+    },
+
+    clearLorebookCache: function() {
         currentCharacterLorebookName = null;
         currentCharacterNameCache = null;
     },
 
-    getGameLorebookName: () => getOrCreateGameLorebook(),
-    
-    async checkGameBookExists() {
-        Logger.log('[checkGameBookExists] 正在开始世界书检查...');
-        const lorebookName = await getOrCreateGameLorebook();
-        // The key change: We no longer treat "SillyTavern System" as a fatal error.
-        // We only proceed to fetch data if we have a *real* character book.
-        if (lorebookName && !lorebookName.endsWith('SillyTavern System')) {
-            AIGame_State.hasGameBook = true;
-            Logger.success(`[checkGameBookExists] 世界书已准备好。正在获取游戏数据...`);
-            await fetchAllGameData();
-        } else {
-            AIGame_State.hasGameBook = false;
-            Logger.warn("[checkGameBookExists] 仍在等待有效的角色上下文，或世界书不可用。");
-            UI.renderPanelContent(); // This will show the "Create/Fix" button or loading state
-        }
-    },
-    
-    async createGameBookEntries() {
-        await getOrCreateGameLorebook();
-        await this.checkGameBookExists();
-    },
-
-    async startNewRun(difficulty) {
-        Logger.log(`正在以难度开始新一轮游戏: ${difficulty}`);
+    startNewRun: async function(difficulty) {
         const settings = DIFFICULTY_SETTINGS[difficulty];
-        if (!settings) {
-            Logger.error(`选择了无效的难度: ${difficulty}`);
-            return;
-        }
-        await updateWorldbook('sp_player_data', data => ({
-            ...data,
-            health: settings.health,
-            max_health: settings.max_health,
-            chips: settings.chips,
-            inventory: [],
-            status_effects: []
-        }));
-        await updateWorldbook('sp_map_data', () => generateMapData(0));
+        Logger.log(`Starting new run with difficulty: ${difficulty}`);
+        UI.flashToggleButton(); // NEW: Flash toggle button on run start
         
-        toastr_API.success(`新的挑战已开始！难度：${settings.name}`);
-        AIGame_State.currentActiveTab = 'map';
-        
-        AudioManager_API.startBGMPlaylist(); // Start BGM when run begins
-        
-        await fetchAllGameData();
-    },
+        // Reset player data based on difficulty
+        await updateWorldbook('sp_player_data', (p) => {
+            p.health = settings.health;
+            p.max_health = settings.max_health;
+            p.chips = settings.chips;
+            p.inventory = [];
+            p.status_effects = [];
+            return p;
+        });
 
-    async resetAllGameData() {
-        Logger.log('正在为新一轮游戏重置所有游戏数据...');
-        AIGame_State.mapData = null;
-        AIGame_State.runInProgress = false;
-        AIGame_State.mapTransformInitialized = false;
-        AIGame_State.currentActiveTab = 'map';
-        await updateWorldbook('sp_player_data', () => ({}));
-        await updateWorldbook('sp_map_data', () => ({}));
-        await updateWorldbook('sp_enemy_data', () => ({}));
-        await updateWorldbook('sp_game_state', () => ({}));
-        await updateWorldbook('sp_player_cards', () => ({ "current_hand": [] }));
-        await updateWorldbook('sp_private_data', () => ({}));
-        
-        toastr_API.info("挑战已重置。");
-        await fetchAllGameData();
-    },
-    
-    async advanceToNextFloor() {
-        AudioManager_API.play('elevator_ding');
-        const currentLayer = AIGame_State.mapData?.mapLayer ?? 0;
-        const nextLayer = currentLayer + 1;
-        Logger.log(`正在前往下一层: ${nextLayer}`);
-
-        const newMap = generateMapData(nextLayer);
+        // Generate a new map for layer 0
+        const newMap = generateMapData(0);
         await updateWorldbook('sp_map_data', () => newMap);
 
-        const prompt = `(系统提示：{{user}}已前往下一层。)`;
-        await TavernHelper_API.triggerSlash(`/setinput ${JSON.stringify(prompt)}`);
+        // Clear any lingering game/enemy state
+        await updateWorldbook('sp_game_state', () => ({}));
+        await updateWorldbook('sp_enemy_data', () => ({ enemies: [] }));
 
-        toastr_API.success(`已成功前往第 ${nextLayer + 1} 层！`);
+        AIGame_State.currentActiveTab = 'map';
         AIGame_State.selectedMapNodeId = null;
         AIGame_State.mapTransformInitialized = false;
+
         await fetchAllGameData();
     },
+
+    // Functions that don't depend on sub-handlers can be passed directly
+    advanceToNextFloor,
+    resetAllGameData,
+    mainProcessor,
+    deleteCardFromUI,
+    surrender,
+    begForMercy,
+    stagePlayerAction,
+    undoStagedAction,
+    undoAllStagedActions,
+    commitStagedActions,
+    processPendingDealActions,
+    sendNarrativeMessage,
+
+    // WRAPPED functions that depend on initialized sub-handlers
+    useItem: async function(itemIndex) {
+        return await ItemHandler.useItem(itemIndex);
+    },
+    attemptEscape: async function() {
+        return await GameHandler.attemptEscape();
+    },
+    playerGoesAllIn: async function() {
+        return await GameHandler.playerGoesAllIn();
+    },
     
-    // Delegate to sub-handlers
-    saveMapData: () => MapHandler.saveMapData(),
-    travelToNode: (nodeId, nodeType) => MapHandler.travelToNode(nodeId, nodeType),
-    findSecretRoom: () => MapHandler.findSecretRoom(),
-    useItem: (itemIndex) => ItemHandler.useItem(itemIndex),
-    stagePlayerAction: (action) => GameHandler.stagePlayerAction(action),
-    undoStagedAction: (actionId) => GameHandler.undoStagedAction(actionId),
-    undoAllStagedActions: () => GameHandler.undoAllStagedActions(),
-    commitStagedActions: () => GameHandler.commitStagedActions(),
-    playerGoesAllIn: () => GameHandler.playerGoesAllIn(),
-    attemptEscape: () => GameHandler.attemptEscape(),
+    // MapHandler Pass-throughs (wrapped)
+    travelToNode: async function(nodeId, nodeType) {
+        return await MapHandler.travelToNode(nodeId, nodeType);
+    },
+    findSecretRoom: async function() {
+        return await MapHandler.findSecretRoom();
+    },
+    saveMapData: async function() {
+        return await MapHandler.saveMapData();
+    },
 };

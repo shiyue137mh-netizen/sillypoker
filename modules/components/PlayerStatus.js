@@ -2,6 +2,7 @@
  * AI Card Table Extension - Player Status UI Component
  * @description Generates the HTML for the player's status displays (HUD and Inventory).
  */
+import { getChipTier } from '../utils.js';
 
 function getHealthHTML(health, max_health) {
     let hearts = '';
@@ -33,6 +34,7 @@ export function getPlayerHUDHTML(playerData, gameState) {
     const max_health = playerData.max_health ?? 0;
     const chips = playerData.chips ?? 0;
     const statusEffects = playerData.status_effects || [];
+    const chipTier = getChipTier(chips);
 
     const gameTypeHTML = gameState?.game_type ? `<div class="game-type-display">${gameState.game_type}</div>` : '';
 
@@ -40,7 +42,7 @@ export function getPlayerHUDHTML(playerData, gameState) {
         <div class="player-hud">
             ${gameTypeHTML}
             ${getHealthHTML(health, max_health)}
-            <div class="chips-display">
+            <div class="chips-display" data-chip-tier="${chipTier}">
                 <i class="fas fa-coins"></i>
                 <span>${chips.toLocaleString()}</span>
             </div>

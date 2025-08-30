@@ -12,11 +12,21 @@
     100% { filter: drop-shadow(0 0 8px rgba(249, 168, 37, 0.4)); }
 }
 
-@keyframes pot-win-glow {
-    0% { box-shadow: 0 0 10px 2px rgba(255, 215, 0, 0.2); transform: scale(1); }
-    50% { box-shadow: 0 0 25px 8px rgba(255, 215, 0, 0.7); transform: scale(1.05); }
-    100% { box-shadow: 0 0 10px 2px rgba(255, 215, 0, 0.2); transform: scale(1); }
+@keyframes shimmer-glow {
+    0% {
+        color: #FFD700;
+        text-shadow: 0 0 8px #FFD700, 0 0 16px #FFF, 0 0 24px #FFA500;
+    }
+    50% {
+        color: #FFFACD;
+        text-shadow: 0 0 12px #FFD700, 0 0 24px #FFF, 0 0 36px #FFA500;
+    }
+    100% {
+        color: #FFD700;
+        text-shadow: 0 0 8px #FFD700, 0 0 16px #FFF, 0 0 24px #FFA500;
+    }
 }
+
 
 @keyframes shatter-main {
     0% { opacity: 1; }
@@ -136,12 +146,12 @@
     transform: translateX(-50%);
 }
 #sillypoker-panel .position-left {
-    left: 10px;
+    left: 40px; /* MODIFIED: Increased margin from edge */
     top: 50%;
     transform: translateY(-50%);
 }
 #sillypoker-panel .position-right {
-    right: 10px;
+    right: 40px; /* MODIFIED: Increased margin from edge */
     top: 50%;
     transform: translateY(-50%);
 }
@@ -175,18 +185,18 @@
 
 #sillypoker-panel .opponent-name { 
     font-family: 'Playfair Display', serif; 
-    font-size: 1.2rem;
+    font-size: 1.2em;
 }
 #sillypoker-panel .opponent-style { 
     font-style: italic; 
-    font-size: 0.8rem;
+    font-size: 0.8em;
     opacity: 0.8; 
 }
 #sillypoker-panel .opponent-chips {
     display: flex;
     align-items: center;
     gap: 5px;
-    font-size: 0.9rem;
+    font-size: 0.9em;
     font-weight: 500;
     color: var(--gold-accent);
     background-color: rgba(0,0,0,0.2);
@@ -223,7 +233,7 @@
     border: none;
     border-radius: 8px; 
     padding: 10px 20px; 
-    font-size: 1rem; 
+    font-size: 1em; 
     font-weight: 500; 
     cursor: pointer; 
     transition: all 0.2s ease; 
@@ -296,7 +306,7 @@
     align-items: center;
     justify-content: center;
     color: rgba(255, 255, 255, 0.2);
-    font-size: 2rem;
+    font-size: 2em;
     transform: translate(-50%, -50%);
 }
 #sillypoker-panel .pot { 
@@ -312,11 +322,8 @@
     transition: box-shadow 0.3s, transform 0.3s;
     flex-shrink: 0;
 }
-#sillypoker-panel .pot.win-glow {
-    animation: pot-win-glow 1.5s ease-in-out;
-}
 #sillypoker-panel .pot-amount { 
-    font-size: 2rem; 
+    font-size: 2em; 
     font-weight: 500; 
     color: var(--gold-accent); 
     text-shadow: 0 0 5px rgba(0,0,0,0.5); 
@@ -332,7 +339,7 @@
 #sillypoker-panel .custom-wagers-area {
     color: var(--text-light);
     text-align: center;
-    font-size: 0.8rem;
+    font-size: 0.8em;
     padding: 0;
     line-height: 1.3;
 }
@@ -365,7 +372,7 @@
     color: #d1d5db;
     padding: 4px 8px;
     border-radius: 12px;
-    font-size: 0.8rem;
+    font-size: 0.8em;
     border: 1px solid #4b5563;
 }
 
@@ -373,7 +380,7 @@
     background: none;
     border: none;
     color: #9ca3af;
-    font-size: 1.1rem;
+    font-size: 1.1em;
     margin-left: 6px;
     cursor: pointer;
     padding: 0 4px;
@@ -405,18 +412,22 @@
     border: 1px solid rgba(74, 222, 128, 0.7);
     border-radius: 12px;
     color: var(--text-light);
-    font-size: 0.85rem;
+    font-size: 0.85em;
     text-align: center;
     z-index: 50;
     box-shadow: 0 4px 15px rgba(0,0,0,0.4);
     animation: hint-pulse 3.5s infinite ease-in-out;
 }
 
-/* --- Chip Animation --- */
+/* --- Chip Tiers & Animation --- */
+[data-chip-tier="2"] { color: #FFBF00 !important; }
+[data-chip-tier="3"] { color: #FFD700 !important; text-shadow: 0 0 5px #FFD700; }
+[data-chip-tier="4"] { animation: shimmer-glow 2s infinite; }
+
 .animated-chip {
     position: absolute;
     color: var(--gold-accent);
-    font-size: 24px;
+    font-size: 1.2em;
     z-index: 1000;
     pointer-events: none;
     transition: all 0.7s cubic-bezier(0.5, 0, 0.9, 0.5);
@@ -427,28 +438,34 @@
     opacity: 0.5;
 }
 
-/* --- NEW: Emote Wheel Styles --- */
+/* --- NEW: Emote Wheel & History Styles --- */
 .emote-wheel-container {
     position: absolute;
     bottom: 20px;
     left: 20px;
     z-index: 110;
 }
-.emote-wheel-button {
+.game-history-container {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    z-index: 110;
+}
+.emote-wheel-button, .game-history-button {
     width: 48px;
     height: 48px;
     background-color: rgba(17, 24, 39, 0.8);
     border: 1px solid #4b5563;
     border-radius: 50%;
     color: #d1d5db;
-    font-size: 24px;
+    font-size: 1.2em;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: transform 0.2s, background-color 0.2s;
 }
-.emote-wheel-button:hover {
+.emote-wheel-button:hover, .game-history-button:hover {
     transform: scale(1.1);
     background-color: #374151;
 }
@@ -484,7 +501,7 @@
     border-radius: 6px;
     cursor: pointer;
     text-align: left;
-    font-size: 0.9rem;
+    font-size: 0.9em;
     transition: background-color 0.2s;
     white-space: nowrap;
     overflow: hidden;
@@ -493,4 +510,65 @@
 .emote-wheel-item:hover {
     background-color: #4b5563;
     color: white;
+}
+
+/* NEW: Win/Loss Animation Overlay */
+.game-end-overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.5s ease-in-out;
+    pointer-events: none;
+    backdrop-filter: blur(2px);
+}
+.game-end-overlay.visible {
+    opacity: 1;
+}
+.win-overlay {
+    background: rgba(255, 215, 0, 0.1);
+}
+.loss-overlay {
+    background: rgba(100, 10, 10, 0.2);
+}
+.end-game-text-container {
+    transform: scale(1.5);
+}
+.end-game-text {
+    font-family: 'Playfair Display', serif;
+    font-size: 8em;
+    font-weight: bold;
+    position: relative;
+    display: inline-block;
+}
+.win-overlay .end-game-text {
+    animation: shimmer-glow 2s infinite;
+}
+
+.loss-overlay .end-game-text {
+    color: #dc2626;
+    text-shadow: 0 0 8px #f87171;
+}
+
+.loss-overlay .end-game-text.shattering {
+    animation: shatter-main 0.5s 0.2s forwards cubic-bezier(0.25, 1, 0.5, 1);
+}
+.loss-overlay .end-game-text.shattering::before,
+.loss-overlay .end-game-text.shattering::after {
+    content: 'DEFEAT';
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    color: #dc2626;
+    text-shadow: 0 0 8px #f87171;
+}
+.loss-overlay .end-game-text.shattering::before {
+    clip-path: polygon(0 0, 50% 0, 30% 100%, 0 100%);
+    animation: shatter-piece-1 0.7s 0.2s forwards cubic-bezier(0.25, 1, 0.5, 1);
+}
+.loss-overlay .end-game-text.shattering::after {
+    clip-path: polygon(50% 0, 100% 0, 100% 100%, 30% 100%);
+    animation: shatter-piece-2 0.7s 0.2s forwards cubic-bezier(0.25, 1, 0.5, 1);
 }

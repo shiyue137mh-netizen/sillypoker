@@ -9,22 +9,6 @@ import { AudioManager } from './audioManager.js';
 
 let jQuery_API, parentWin, DataHandler, UI, toastr_API, SillyTavern_Context_API, TavernHelper_API;
 
-// Lazy load showdown converter
-let markdownConverter = null;
-
-function getMarkdownConverter() {
-    if (!markdownConverter) {
-        if (parentWin.showdown && typeof parentWin.showdown.Converter === 'function') {
-            markdownConverter = new parentWin.showdown.Converter();
-        } else {
-            Logger.error("Showdown markdown converter is not available on the parent window.");
-            return null;
-        }
-    }
-    return markdownConverter;
-}
-
-
 export const AIGame_Events = {
     init: function(deps, dataHandler, uiHandler) {
         jQuery_API = deps.jq;
@@ -42,6 +26,8 @@ export const AIGame_Events = {
             await AudioManager.play('click1');
             UI.togglePanel();
         });
+        // ADDED: Listener for window resize to apply scaling
+        jQuery_API(parentWin).off('resize.sillypoker').on('resize.sillypoker', () => UI.updateScaleAndPosition(true));
     },
 
     addPanelEventListeners() {
@@ -56,11 +42,19 @@ export const AIGame_Events = {
             const targetId = target.attr('id');
             let isSoundWorthy = true;
 
-            // New: Close emote wheel if click is outside
+            // Close menus/panels if click is outside
             const emoteContainer = closest('.emote-wheel-container');
             if (!emoteContainer.length) {
                 panel.find('.emote-wheel-menu').removeClass('visible');
             }
+            const historyContainer = closest('.game-history-container');
+            if (!historyContainer.length) {
+                if(AIGame_State.isHistoryPanelVisible) {
+                    AIGame_State.isHistoryPanelVisible = false;
+                    panel.find('.history-panel-overlay').removeClass('visible');
+                }
+            }
+
 
             if (closest('.sillypoker-close-btn').length) {
                 UI.togglePanel(false);
@@ -121,6 +115,9 @@ export const AIGame_Events = {
                  const confirmResult = await SillyTavern_Context_API.callGenericPopup(`你确定要放弃当前的挑战吗？所有进度都将丢失。`, SillyTavern_Context_API.POPUP_TYPE.CONFIRM);
                  if (confirmResult) DataHandler.resetAllGameData();
             }
+            else if (closest('.reset-ui-position-btn').length) { // ADDED
+                UI.resetUIPosition();
+            }
             else if (closest('.sillypoker-create-book-btn').length) {
                 DataHandler.createGameBookEntries();
             }
@@ -146,12 +143,17 @@ export const AIGame_Events = {
                 const actionId = closest('.undo-action-btn').data('action-id');
                 DataHandler.undoStagedAction(actionId);
             }
-             // New: Emote Wheel Logic
-            else if (emoteContainer.length) {
-                isSoundWorthy = false; // Custom sounds handled inside
+             // Emote Wheel & History Logic
+            else if (emoteContainer.length || historyContainer.length) {
+                isSoundWorthy = false; 
                 if (closest('.emote-wheel-button').length) {
                     await AudioManager.play('click2');
                     panel.find('.emote-wheel-menu').toggleClass('visible');
+                }
+                else if (closest('.game-history-button').length) {
+                    await AudioManager.play('click2');
+                    AIGame_State.isHistoryPanelVisible = !AIGame_State.isHistoryPanelVisible;
+                    panel.find('.history-panel-overlay').toggleClass('visible', AIGame_State.isHistoryPanelVisible);
                 }
                 else if (closest('.emote-wheel-item').length) {
                     await AudioManager.play('click1');
@@ -159,19 +161,11 @@ export const AIGame_Events = {
                     const itemIndex = item.data('index');
                     let textTemplate = AIGame_Config.EMOTE_TEXTS[itemIndex];
                     
-                    // We only need to substitute our custom placeholders.
-                    // SillyTavern will handle {{user}} automatically when the text is sent for generation.
                     const playerChips = AIGame_State.playerData?.chips || 0;
+                    let final_text = textTemplate.replace(/\[现在筹码数\]/g, playerChips.toLocaleString());
 
-                    let final_text = textTemplate
-                        .replace(/\[现在筹码数\]/g, playerChips.toLocaleString());
-
-                    // Close menu immediately for better UX
                     panel.find('.emote-wheel-menu').removeClass('visible');
-
-                    // Use /setinput and generate() to send the message as a user and trigger an AI response.
-                    await TavernHelper_API.triggerSlash(`/setinput ${JSON.stringify(final_text)}`);
-                    SillyTavern_Context_API.generate();
+                    DataHandler.stagePlayerAction({ type: 'emote', text: final_text });
                 }
             }
             else if (closest('#all-in-btn').length) {
@@ -282,30 +276,7 @@ export const AIGame_Events = {
                 closest('.player-position-container .hand .card').toggleClass('selected');
             }
             else if (closest('.rules-list-item').length) {
-                const ruleId = closest('.rules-list-item').data('rule-id');
-                const contentPanel = panel.find('.rules-content-display');
-                const ruleItems = panel.find('.rules-list-item');
-
-                ruleItems.removeClass('active');
-                closest('.rules-list-item').addClass('active');
-
-                try {
-                    const ruleJsUrl = new URL(import.meta.url);
-                    const basePath = ruleJsUrl.pathname.substring(0, ruleJsUrl.pathname.lastIndexOf('/modules'));
-                    const ruleFileUrl = `${basePath}/rules/${ruleId}.md`;
-                    const response = await fetch(ruleFileUrl);
-                    if (!response.ok) throw new Error('Rule file not found.');
-                    const markdown = await response.text();
-                    const converter = getMarkdownConverter();
-                    if(converter) {
-                         contentPanel.html(converter.makeHtml(markdown));
-                    } else {
-                        contentPanel.text('Markdown 渲染器加载失败。');
-                    }
-                } catch (err) {
-                    contentPanel.html('<p>无法加载该规则的说明。</p>');
-                    Logger.error(`加载规则文件失败: ${ruleId}.md`, err);
-                }
+                UI.handleRulesItemClick(closest('.rules-list-item'));
             } else {
                 isSoundWorthy = false;
             }
@@ -319,12 +290,37 @@ export const AIGame_Events = {
             }
         });
 
+        // NEW: Submit handler for the narrative input form
+        panel.off('submit.sillypoker_story').on('submit.sillypoker_story', '#story-narrative-form', async (e) => {
+            e.preventDefault();
+            const input = panel.find('#story-narrative-input');
+            const text = input.val();
+            if (text && text.trim()) {
+                await AudioManager.play('click1');
+                DataHandler.sendNarrativeMessage(text.trim());
+                input.val('');
+            }
+        });
+
         // BGM Volume Slider Event Listener
         panel.off('input.sillypoker_bgm_volume').on('input.sillypoker_bgm_volume', '#bgm-volume-slider', function() {
             const volume = parseFloat(jQuery_API(this).val());
             AudioManager.setVolume(volume);
         });
         
+        // NEW: Font Size Slider Event Listeners
+        panel.off('input.sillypoker_fontsize').on('input.sillypoker_fontsize', '#font-size-slider', function() {
+            const newSize = jQuery_API(this).val();
+            panel.css('font-size', `${newSize}px`);
+            panel.find('#font-size-value').text(`${newSize}px`);
+        });
+
+        panel.off('change.sillypoker_fontsize_save').on('change.sillypoker_fontsize_save', '#font-size-slider', function() {
+            const newSize = parseInt(jQuery_API(this).val(), 10);
+            AIGame_State.baseFontSize = newSize;
+            AIGame_State.saveUiState();
+            Logger.log(`Font size saved: ${newSize}px`);
+        });
     },
 
     addMapInteractionListeners(mapViewContainer) {
@@ -407,7 +403,19 @@ export const AIGame_Events = {
                     UI.renderActiveTabContent();
                  }
                  if (closest('.next-floor-btn').length) DataHandler.advanceToNextFloor();
-                 if (closest('.find-secret-btn').length) DataHandler.findSecretRoom();
+                 if (closest('.find-secret-btn').length) {
+                    const playerNodeId = AIGame_State.mapData?.player_position;
+                    if (playerNodeId) {
+                        const nodeElement = jQuery_API(this).find(`.map-node[data-node-id="${playerNodeId}"]`);
+                        if (nodeElement.length) {
+                            nodeElement.addClass('shake-animation');
+                            setTimeout(() => {
+                                nodeElement.removeClass('shake-animation');
+                            }, 800); // Duration matches CSS animation
+                        }
+                    }
+                    DataHandler.findSecretRoom();
+                 }
             } else {
                 isSoundWorthy = false;
             }
@@ -418,24 +426,52 @@ export const AIGame_Events = {
 
     makePanelDraggable(panel) {
         let isDragging = false;
-        let dragOffsetX = 0;
-        let dragOffsetY = 0;
-
+        let dragStartPos = { x: 0, y: 0 };
+        let panelStartPos = { left: 0, top: 0 };
+    
         panel.off('mousedown.sillypoker_drag_init').on('mousedown.sillypoker_drag_init', '.sillypoker-header', (e) => {
-            if (jQuery_API(e.target).is('button, i, input, .sillypoker-header-btn')) return;
-            isDragging = true;
-            const panelRect = panel[0].getBoundingClientRect();
-            dragOffsetX = e.clientX - panelRect.left;
-            dragOffsetY = e.clientY - panelRect.top;
+            // Prevent dragging when clicking on interactive elements in the header
+            if (jQuery_API(e.target).is('button, i, input, .sillypoker-header-btn, .player-hud, .bgm-player, .bgm-player *')) return;
+            
+            isDragging = false;
+            let totalDeltaX = 0;
+            let totalDeltaY = 0;
+
+            dragStartPos = { x: e.clientX, y: e.clientY };
+            // Use position() which is relative to the offset parent and not affected by CSS transforms (scale)
+            panelStartPos = panel.position();
             
             jQuery_API(parentWin.document).on('mousemove.sillypoker_drag', (e_move) => {
-                if (!isDragging) return;
-                panel.css({ left: e_move.clientX - dragOffsetX, top: e_move.clientY - dragOffsetY });
-            });
+                const deltaX = e_move.clientX - dragStartPos.x;
+                const deltaY = e_move.clientY - dragStartPos.y;
 
+                totalDeltaX += Math.abs(deltaX);
+                totalDeltaY += Math.abs(deltaY);
+
+                // Only start considering it a drag after moving a few pixels, to not interfere with clicks
+                if (!isDragging && (totalDeltaX > 5 || totalDeltaY > 5)) {
+                    isDragging = true;
+                }
+                
+                if (isDragging) {
+                    // Get scale from state to correctly adjust movement
+                    const scale = AIGame_State.mapZoom || 1; 
+                    panel.css({ 
+                        left: panelStartPos.left + (deltaX / scale) + 'px', 
+                        top: panelStartPos.top + (deltaY / scale) + 'px' 
+                    });
+                }
+            });
+    
             jQuery_API(parentWin.document).one('mouseup.sillypoker_drag_end', () => {
-                isDragging = false;
                 jQuery_API(parentWin.document).off('.sillypoker_drag');
+                if (isDragging) {
+                    const finalPos = { top: panel.css('top'), left: panel.css('left') };
+                    AIGame_State.panelPos = finalPos;
+                    // Call updateScaleAndPosition to clamp the new position and save it
+                    UI.updateScaleAndPosition(true);
+                }
+                isDragging = false;
             });
         });
     }

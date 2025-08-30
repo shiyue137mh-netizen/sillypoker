@@ -206,12 +206,14 @@ async function _handleGameSetupDeck(command) {
     }));
 
     Logger.success(`Custom deck with ${shuffledDeck.length} cards created and shuffled.`);
+    context.AIGame_History.addGameStatusEntry({ text: `设置了 ${shuffledDeck.length} 张牌的牌堆。` });
 }
 
 async function _handleGameStart(command) {
     AIGame_State.currentHint = null; // Clear any previous hints
     const { game_type, players, initial_state } = command.data;
     context.toastr_API.info(`新牌局已开始: ${game_type}`, "游戏开始");
+    context.AIGame_History.addGameStatusEntry({ text: `牌局开始: ${game_type}` });
     const enemyStateTemplate = initial_state || {};
 
     if (!initial_state) {
@@ -245,7 +247,7 @@ async function _handleGameStart(command) {
         delete s.pending_deal_actions; // CRITICAL FIX: Clear any pending deals from a previous game
         return s;
     });
-    await context.updateWorldbook('sp_player_cards', data => ({ ...data, current_hand: [] }));
+    await context.updateWorldbook('sp_player_cards', data => ({ ...data, "current_hand": [] }));
 
     Logger.success(`Game started: ${game_type}`);
     await context.fetchAllGameData();
@@ -256,6 +258,9 @@ async function _dealCards(actions) {
     await context.updateWorldbook('sp_game_state', (s) => {
         s.pending_deal_actions = actions;
         return s;
+    });
+    actions.forEach(action => {
+        context.AIGame_History.addDealEntry(action);
     });
     await context.fetchAllGameData();
 }
@@ -280,14 +285,24 @@ async function _handleGameEnd(command) {
     AIGame_State.currentHint = null; // Clear any hint when game ends
     const { result, reason } = command.data;
     let playerDied = false;
+    context.AIGame_History.addGameStatusEntry({ text: `牌局结束: ${reason}` });
     
+    context.UI.showEndGameAnimation(result); // NEW: Trigger win/loss animation
+
+    const potAmount = AIGame_State.currentGameState?.pot_amount || 0;
+    const isWin = result === 'win' || result === 'boss_win';
+    
+    if (isWin && potAmount > 0) {
+        const winnerSelector = '#player-area-bottom';
+        context.UI.animateChips({ from: '#pot-area', to: winnerSelector, count: Math.min(20, Math.floor(potAmount / 100)), mode: 'burst' });
+    } else if (result === 'lose' && potAmount > 0) {
+        const opponentSelector = '#opponent-area-top-0'; // Fallback to first opponent
+        context.UI.animateChips({ from: '#pot-area', to: opponentSelector, count: Math.min(20, Math.floor(potAmount / 100)), mode: 'burst' });
+    }
+
+
     if (result === 'win') {
         context.toastr_API.success(reason, "胜利！");
-        const potElement = context.parentWin.jQuery('#sillypoker-panel .pot');
-        if (potElement.length) {
-            potElement.addClass('win-glow');
-            setTimeout(() => potElement.removeClass('win-glow'), 1500);
-        }
     } else if (result === 'lose') {
         context.toastr_API.warning(reason, "失败...");
         context.AudioManager_API.play('dice');
@@ -306,14 +321,13 @@ async function _handleGameEnd(command) {
             context.toastr_API.error("你的生命值已耗尽！挑战结束。", "游戏结束");
             AIGame_State.runInProgress = false; // Manually update state
         }
+    } else if (result === 'dead') {
+        context.toastr_API.error(reason, "你已死亡");
+        await context.resetAllGameData(); // This handles a full reset and UI update
+        return; // Stop further processing in this function
     } else if (result === 'boss_win') {
         context.AudioManager_API.play('boss_win');
         context.toastr_API.success(reason, "首领已被击败！");
-        const potElement = context.parentWin.jQuery('#sillypoker-panel .pot');
-        if (potElement.length) {
-            potElement.addClass('win-glow');
-            setTimeout(() => potElement.removeClass('win-glow'), 1500);
-        }
         await context.updateWorldbook('sp_map_data', m => {
             if (m) {
                 m.bossDefeated = true;
@@ -383,26 +397,24 @@ async function _handleGameHint(command) {
 
 async function _handleActionBet(command) {
     const { player_name, amount, things } = command.data;
-    const userPlayerName = await context.SillyTavern_API.getContext().substituteParamsExtended('{{user}}');
     
-    // Determine source selector for animation
-    let sourceSelector = '#player-area-bottom'; // Default to player
+    const userPlayerName = await context.SillyTavern_API.getContext().substituteParamsExtended('{{user}}');
     if (player_name !== userPlayerName) {
         const enemy = AIGame_State.enemyData.enemies.find(e => e.name === player_name);
         if (enemy) {
             const enemyId = context.parentWin.jQuery(`[data-enemy-name="${enemy.name}"]`).closest('.player-position-container').attr('id');
-            if (enemyId) sourceSelector = `#${enemyId}`;
+            if (enemyId) context.UI.animateChips({ from: `#${enemyId}`, to: '#pot-area' });
         }
     }
-    context.UI.animateChips(sourceSelector, '#pot-area');
     await AudioManager.play('chip');
+    context.AIGame_History.addGameActionEntry({ actor: player_name, action: '下注了', amount: amount, things: things });
 
     if (amount) {
         const numericAmount = parseInt(amount, 10);
         await context.updateWorldbook('sp_game_state', s => ({ 
             ...s, 
             pot_amount: (s.pot_amount || 0) + numericAmount,
-            last_bet_amount: numericAmount // This is the new amount to be called
+            last_bet_amount: numericAmount
         }));
         if (player_name === userPlayerName) {
             await context.updateWorldbook('sp_player_data', p => ({ ...p, chips: p.chips - numericAmount }));
@@ -428,24 +440,23 @@ async function _handleActionBet(command) {
 
 async function _handleActionCall(command) {
     const { player_name } = command.data;
-    const userPlayerName = await context.SillyTavern_API.getContext().substituteParamsExtended('{{user}}');
     const amountToCall = AIGame_State.currentGameState.last_bet_amount || 0;
 
     if (amountToCall <= 0) {
         Logger.warn(`Call action received, but there is no bet to call. Ignoring.`);
-        return; // Nothing to call
+        return;
     }
     
-    let sourceSelector = '#player-area-bottom';
-     if (player_name !== userPlayerName) {
+    const userPlayerName = await context.SillyTavern_API.getContext().substituteParamsExtended('{{user}}');
+    if (player_name !== userPlayerName) {
         const enemy = AIGame_State.enemyData.enemies.find(e => e.name === player_name);
         if (enemy) {
             const enemyId = context.parentWin.jQuery(`[data-enemy-name="${enemy.name}"]`).closest('.player-position-container').attr('id');
-            if (enemyId) sourceSelector = `#${enemyId}`;
+            if (enemyId) context.UI.animateChips({ from: `#${enemyId}`, to: '#pot-area' });
         }
     }
-    context.UI.animateChips(sourceSelector, '#pot-area');
     await AudioManager.play('chip');
+    context.AIGame_History.addGameActionEntry({ actor: player_name, action: '跟注了', amount: amountToCall });
 
     await context.updateWorldbook('sp_game_state', s => ({ ...s, pot_amount: (s.pot_amount || 0) + amountToCall }));
 
@@ -464,11 +475,13 @@ async function _handleActionCall(command) {
 
 async function _handleActionCheck(command) {
     Logger.log(`Player ${command.data.player_name} checks.`);
+    context.AIGame_History.addGameActionEntry({ actor: command.data.player_name, action: '过牌' });
     await context.fetchAllGameData();
 }
 
 async function _handleActionFold(command) {
     Logger.log(`Player ${command.data.player_name} folds.`);
+    context.AIGame_History.addGameActionEntry({ actor: command.data.player_name, action: '弃牌' });
     // Future: could add a status to the player/enemy object.
     await context.fetchAllGameData();
 }
@@ -476,6 +489,7 @@ async function _handleActionFold(command) {
 async function _handleActionHit(command) {
     await AudioManager.play('deal');
     const { player_name } = command.data;
+    context.AIGame_History.addGameActionEntry({ actor: player_name, action: '要牌' });
     const userPlayerName = await context.SillyTavern_API.getContext().substituteParamsExtended('{{user}}');
     
     // A hit card is dealt face up for all to see. It's added to the player's hand array.
@@ -494,6 +508,8 @@ async function _handleActionHit(command) {
 async function _handleActionShowdown(command) {
     const playerName = command.data?.player_name;
     if (!playerName) return;
+
+    context.AIGame_History.addGameActionEntry({ actor: playerName, action: '摊牌' });
 
     await context.updateWorldbook('sp_enemy_data', enemyData => {
         const enemy = enemyData.enemies?.find(e => e.name === playerName);
@@ -606,109 +622,6 @@ export const AIGame_GameHandler = {
         } else {
             Logger.warn(`Unhandled game command: ${key}`);
         }
-    },
-
-    stagePlayerAction(action) {
-        action.id = Date.now() + Math.random();
-    
-        if ((action.type === 'bet' || action.type === 'call') && action.amount) {
-            AIGame_State.playerData.chips -= action.amount;
-            context.AudioManager_API.play('chip');
-        }
-        AIGame_State.stagedPlayerActions.push(action);
-        
-        // BUG FIX: Only re-render the HUD and staged actions, not the whole game.
-        context.UI.rerenderPlayerHUD();
-        context.UI.rerenderStagedActionsAndCommitButton();
-
-        Logger.log('Player action staged:', action);
-    },
-
-    undoStagedAction(actionId) {
-        const actionIndex = AIGame_State.stagedPlayerActions.findIndex(a => a.id === actionId);
-        if (actionIndex === -1) return;
-    
-        const actionToUndo = AIGame_State.stagedPlayerActions[actionIndex];
-        
-        if ((actionToUndo.type === 'bet' || actionToUndo.type === 'call') && actionToUndo.amount) {
-            AIGame_State.playerData.chips += actionToUndo.amount;
-        }
-        
-        AIGame_State.stagedPlayerActions.splice(actionIndex, 1);
-        context.UI.rerenderStagedActionsAndCommitButton();
-        Logger.log('Player action undone:', actionToUndo);
-    },
-
-    undoAllStagedActions() {
-        if (AIGame_State.stagedPlayerActions.length === 0) return;
-    
-        for (const action of AIGame_State.stagedPlayerActions) {
-            if ((action.type === 'bet' || action.type === 'call') && action.amount) {
-                AIGame_State.playerData.chips += action.amount;
-            }
-        }
-        
-        AIGame_State.stagedPlayerActions = [];
-        
-        context.UI.rerenderPlayerHUD();
-        context.UI.rerenderStagedActionsAndCommitButton();
-        Logger.log('All staged player actions have been undone.');
-    },
-
-    async commitStagedActions() {
-        if (AIGame_State.stagedPlayerActions.length === 0) return;
-    
-        const actionsToCommit = [...AIGame_State.stagedPlayerActions];
-        AIGame_State.stagedPlayerActions = [];
-    
-        await context.updateWorldbook('sp_player_data', p => {
-            p.chips = AIGame_State.playerData.chips;
-            return p;
-        });
-    
-        let potIncrease = 0;
-        let newLastBet = AIGame_State.currentGameState.last_bet_amount;
-    
-        for (const action of actionsToCommit) {
-            if ((action.type === 'bet' || action.type === 'call') && action.amount) {
-                potIncrease += action.amount;
-            }
-            if (action.type === 'bet') {
-                newLastBet = action.amount;
-            }
-        }
-        await context.updateWorldbook('sp_game_state', s => {
-            s.pot_amount = (s.pot_amount || 0) + potIncrease;
-            s.last_bet_amount = newLastBet;
-            return s;
-        });
-    
-        let prompt = `(系统提示：{{user}}执行了以下操作：\n`;
-        for (const action of actionsToCommit) {
-            let actionText = '';
-            let cardText = '';
-
-            if (action.cards && action.cards.length > 0) {
-                cardText = ` ${action.cards.map(c => c.suit + c.rank).join(', ')}`;
-            }
-
-            switch(action.type) {
-                case 'bet': actionText = `- 下注 ${action.amount} 筹码。`; break;
-                case 'call': actionText = `- 跟注 ${action.amount} 筹码。`; break;
-                case 'check': actionText = `- 过牌。`; break;
-                case 'fold': actionText = `- 弃牌${cardText}。`; break;
-                case 'play_cards': actionText = `- 出牌${cardText}。`; break;
-                case 'custom': actionText = `- 执行了自定义动作: "${action.text}"${cardText}。`; break;
-                case 'hit': actionText = `- 要牌。`; break;
-                case 'stand': actionText = `- 停牌。`; break;
-            }
-            prompt += `${actionText}\n`;
-        }
-        prompt += `)`;
-    
-        await context.TavernHelper_API.triggerSlash(`/setinput ${JSON.stringify(prompt)}`);
-        context.SillyTavern_API.getContext().generate();
-        await context.fetchAllGameData();
     },
     
     async playerGoesAllIn() {

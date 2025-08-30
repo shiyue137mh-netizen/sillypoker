@@ -129,8 +129,15 @@ export function generateMapData(layer = 0, rowsPerLayer = 8, paths = 5) {
                 y: layerHeight - (i + 1.5) * rowHeight + (Math.random() - 0.5) * 30,
                 type: getNodeType(i, rowsPerLayer),
                 connections: [],
+                properties: [], // REFACTORED: Initialize properties array
                 incoming_connections: [] // Temporary helper
             };
+            
+            // REFACTORED: Add 'big' property with a 5% chance to non-boss nodes
+            if (Math.random() < 0.05) {
+                node.properties.push('big');
+            }
+
             nodesByRow[i].push(node);
             map.nodes.push(node);
         }
@@ -144,6 +151,7 @@ export function generateMapData(layer = 0, rowsPerLayer = 8, paths = 5) {
         y: rowHeight,
         type: NODE_TYPES.BOSS,
         connections: [],
+        properties: [],
         incoming_connections: []
     };
     map.nodes.push(bossNode);
@@ -197,13 +205,27 @@ export function generateMapData(layer = 0, rowsPerLayer = 8, paths = 5) {
     }
 
     // 6. Generate Secret Rooms (does not affect visual connections)
+    // NEW: Secret nodes now have pre-calculated coordinates and a 'discovered' flag.
     const secret_nodes = [];
-    map.nodes.forEach(node => {
-        // A node can't have both. Check for super hidden first due to its stricter condition.
-        if (node.connections.length >= 4 && Math.random() < 0.20) {
-            secret_nodes.push({ attached_to_node_id: node.id, type: 'super_hidden' });
-        } else if (Math.random() < 0.05) {
-            secret_nodes.push({ attached_to_node_id: node.id, type: 'hidden' });
+    map.nodes.forEach((node, index) => {
+        let hasSecret = false;
+        const secretType = Math.random() < 0.20 ? 'super_hidden' : 'hidden';
+
+        if ((secretType === 'super_hidden' && node.connections.length >= 4) || (secretType === 'hidden' && Math.random() < 0.05)) {
+            hasSecret = true;
+        }
+        
+        if (hasSecret) {
+            const angle = Math.random() * 2 * Math.PI;
+            const distance = 60 + Math.random() * 20;
+            secret_nodes.push({ 
+                id: `L${layer}-S${index}`,
+                attached_to_node_id: node.id, 
+                type: secretType,
+                discovered: false,
+                x: node.x + Math.cos(angle) * distance,
+                y: node.y + Math.sin(angle) * distance,
+            });
         }
     });
     

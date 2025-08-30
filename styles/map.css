@@ -52,18 +52,18 @@
     font-style: italic;
 }
 #sillypoker-panel .details-title {
-    font-size: 1.5rem;
+    font-size: 1.5em;
     font-weight: 500;
     color: var(--gold-accent);
     text-align: center;
 }
 #sillypoker-panel .details-icon {
     text-align: center;
-    font-size: 4rem;
+    font-size: 4em;
     opacity: 0.8;
 }
 #sillypoker-panel .details-description {
-    font-size: 0.9rem;
+    font-size: 0.9em;
     color: #9ca3af;
     text-align: center;
     line-height: 1.5;
@@ -71,7 +71,7 @@
 }
 #sillypoker-panel .details-instructions {
     margin-top: auto; /* Pushes to the bottom */
-    font-size: 0.8rem;
+    font-size: 0.8em;
     color: #4b5563;
     text-align: center;
     padding-top: 10px; /* Give it some space from content above */
@@ -91,7 +91,7 @@
     padding: 8px 16px; 
     border-radius: 5px; 
     cursor: pointer; 
-    font-size: 14px;
+    font-size: 0.7em;
     font-weight: 500;
     width: 100%;
     transition: background-color 0.2s;
@@ -113,7 +113,7 @@
 }
 #sillypoker-panel .map-header-title { 
     margin: 0;
-    font-size: 16px; 
+    font-size: 0.8em; 
 }
 #sillypoker-panel .map-header-buttons { 
     display: flex; 
@@ -127,7 +127,7 @@
     padding: 6px 12px; 
     border-radius: 5px; 
     cursor: pointer; 
-    font-size: 13px; 
+    font-size: 0.65em; 
 }
 #sillypoker-panel .map-action-btn:hover { 
     background: #4338ca; 
@@ -146,7 +146,7 @@
     width: 28px;
     height: 28px;
     border-radius: 50%;
-    font-size: 16px;
+    font-size: 0.8em;
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -237,7 +237,7 @@
     font-family: "Font Awesome 5 Free"; 
     font-weight: 900; 
     color: var(--text-light); 
-    font-size: 1.5rem; 
+    font-size: 1.5em; 
     position: absolute;
     pointer-events: none; 
 }
@@ -251,3 +251,62 @@
 #sillypoker-panel .node-boss .node-bg { fill: #9b2c2c; stroke: #f56565; }
 #sillypoker-panel .node-treasure .node-bg { fill: #a16207; stroke: #f59e0b; } /* Gold/Yellow for treasure */
 #sillypoker-panel .node-card-sharp .node-bg { fill: #5b21b6; stroke: #c084fc; } /* Purple for card sharp */
+
+/* ADDED: Hidden Room Styles */
+#sillypoker-panel .node-hidden-room .node-bg,
+#sillypoker-panel .node-super-hidden-room .node-bg {
+    fill: #4a5568; 
+    stroke: #718096;
+}
+#sillypoker-panel .node-hidden-room,
+#sillypoker-panel .node-super-hidden-room {
+    pointer-events: none; /* Make them non-interactive */
+}
+#sillypoker-panel .node-hidden-room .node-icon,
+#sillypoker-panel .node-super-hidden-room .node-icon {
+    font-size: 1.2em; /* Smaller icon */
+}
+
+/* ADDED: Shake animation for finding secret rooms */
+@keyframes node-shake-translate {
+  10%, 90% { transform: translate(-51%, -50%); }
+  20%, 80% { transform: translate(-49%, -50%); }
+  30%, 50%, 70% { transform: translate(-52%, -50%); }
+  40%, 60% { transform: translate(-48%, -50%); }
+}
+
+.shake-animation {
+  animation: node-shake-translate 0.8s cubic-bezier(.36,.07,.19,.97);
+}
+
+/* ADDED: Node Reveal Animations */
+@keyframes reveal-node {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.5);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+    }
+}
+
+@keyframes draw-path {
+    from {
+        stroke-dashoffset: 1;
+    }
+    to {
+        stroke-dashoffset: 0;
+    }
+}
+
+.revealing-node {
+    animation: reveal-node 0.6s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
+.revealing-path {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    animation: draw-path 0.8s ease-out forwards;
+    animation-delay: 0.2s; /* Start drawing after node appears */
+}

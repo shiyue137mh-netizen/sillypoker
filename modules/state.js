@@ -2,10 +2,14 @@
  * AI Card Table Extension - State Management
  * @description A simple, centralized object to hold the application's state.
  */
+import { AIGame_Config } from '../config.js';
+
 let parentWindow;
 
 export const AIGame_State = {
     isPanelVisible: false,
+    panelPos: null,
+    baseFontSize: 20, // NEW: Added base font size
     hasGameBook: false,
     runInProgress: false, // NEW: Tracks if a Rogelike run is active
     currentActiveTab: 'map', // Default to map view
@@ -42,5 +46,32 @@ export const AIGame_State = {
      */
     init: function(win) {
         parentWindow = win;
+        this.loadUiState(); // Load persisted UI state on initialization
     },
+
+    // MODIFIED: Load UI state from localStorage, now includes font size
+    loadUiState: function() {
+        try {
+            const s = JSON.parse(parentWindow.localStorage.getItem(AIGame_Config.STORAGE_KEY_UI) || '{}');
+            if (s.isPanelVisible !== undefined) this.isPanelVisible = s.isPanelVisible;
+            if (s.panelPos) this.panelPos = s.panelPos;
+            if (s.baseFontSize) this.baseFontSize = s.baseFontSize;
+        } catch (e) {
+            console.error('[SillyPoker] Failed to load UI state from localStorage:', e);
+        }
+    },
+    
+    // MODIFIED: Save UI state to localStorage, now includes font size
+    saveUiState: function() {
+        try {
+            const stateToSave = { 
+                isPanelVisible: this.isPanelVisible, 
+                panelPos: this.panelPos,
+                baseFontSize: this.baseFontSize,
+            };
+            parentWindow.localStorage.setItem(AIGame_Config.STORAGE_KEY_UI, JSON.stringify(stateToSave));
+        } catch (e) {
+            console.error('[SillyPoker] Failed to save UI state to localStorage:', e);
+        }
+    }
 };

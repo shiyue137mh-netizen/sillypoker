@@ -13,7 +13,7 @@
     background-color: var(--log-bg);
     color: var(--log-text);
     font-family: monospace;
-    font-size: 13px;
+    font-size: 0.65em;
     padding: 15px;
     padding-right: 20px; /* Add some space for the scrollbar */
     overflow-y: auto;

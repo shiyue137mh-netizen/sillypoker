@@ -12,6 +12,8 @@
     --button-primary: #4f46e5;
     --button-primary-hover: #4338ca;
     --content-bg: #1f2937;
+    --success-green: #4ade80;
+    --success-green-dark: #166534;
 }
 
 @keyframes panel-shake-flash {
@@ -21,6 +23,23 @@
     0%, 50%, 100% { box-shadow: 0 10px 30px rgba(0,0,0,0.4); }
     25%, 75% { box-shadow: 0 0 20px 5px rgba(239, 68, 68, 0.7); }
 }
+
+/* MODIFIED: Animation now targets the icon's text-shadow, not the button background */
+@keyframes breathing-green-glow {
+    0% {
+        color: var(--success-green);
+        text-shadow: 0 0 5px var(--success-green);
+    }
+    50% {
+        color: #bbf7d0; /* Lighter green for pulse */
+        text-shadow: 0 0 12px var(--success-green), 0 0 18px var(--success-green);
+    }
+    100% {
+        color: var(--success-green);
+        text-shadow: 0 0 5px var(--success-green);
+    }
+}
+
 
 #sillypoker-toggle-btn {
     position: fixed;
@@ -36,7 +55,7 @@
     font-size: 20px;
     cursor: pointer;
     box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-    transition: transform 0.2s ease;
+    transition: transform 0.2s ease, background-color 0.3s ease, box-shadow 0.3s ease;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -44,14 +63,21 @@
 #sillypoker-toggle-btn:hover {
     transform: scale(1.1);
 }
+/* MODIFIED: Only targets the icon inside the button */
+#sillypoker-toggle-btn.in-progress i {
+    color: var(--success-green);
+}
+#sillypoker-toggle-btn.game-starting i {
+    animation: breathing-green-glow 2s ease-in-out;
+}
+
 #sillypoker-panel {
     position: fixed;
     top: 100px;
     left: 100px;
     width: 800px;
-    max-width: 90vw;
     height: 600px;
-    max-height: 80vh;
+    max-height: 95vh;
     background: var(--panel-bg);
     border: 1px solid var(--border-color);
     border-radius: 12px;
@@ -98,7 +124,7 @@
     background: none;
     border: none;
     color: var(--text-light);
-    font-size: 18px;
+    font-size: 0.9em;
     cursor: pointer;
     padding: 6px;
     border-radius: 50%;
@@ -113,7 +139,7 @@
     background-color: rgba(255,255,255,0.1);
 }
 #sillypoker-panel .sillypoker-close-btn {
-    font-size: 24px;
+    font-size: 1.2em;
     font-weight: bold;
     line-height: 1;
 }
@@ -127,10 +153,14 @@
     transition: all 0.3s ease;
 }
 #sillypoker-panel .status-indicator.active {
-    background: #4ade80;
+    background: var(--success-green);
     border: 1px solid #166534;
-    box-shadow: 0 0 5px #4ade80;
+    box-shadow: 0 0 5px var(--success-green);
 }
+#sillypoker-panel .status-indicator.pulsing {
+    animation: breathing-green-glow 2s infinite;
+}
+
 #sillypoker-panel .sillypoker-content {
     flex-grow: 1;
     position: relative;
@@ -168,7 +198,7 @@
     border: none;
     color: #9ca3af;
     cursor: pointer;
-    font-size: 14px;
+    font-size: 0.7em;
     position: relative;
     transition: color 0.2s;
 }
@@ -233,7 +263,7 @@
     color: white;
     border: none;
     border-radius: 50%;
-    font-size: 20px;
+    font-size: 1em;
     cursor: pointer;
     box-shadow: 0 4px 12px rgba(0,0,0,0.3);
     transition: all 0.2s ease;
@@ -255,7 +285,7 @@
     border-radius: 50%;
     width: 20px;
     height: 20px;
-    font-size: 12px;
+    font-size: 0.6em;
     font-weight: bold;
     display: flex;
     align-items: center;
@@ -270,7 +300,7 @@
     color: #d1d5db;
     border: none;
     border-radius: 50%;
-    font-size: 16px;
+    font-size: 0.8em;
     cursor: pointer;
     box-shadow: 0 2px 8px rgba(0,0,0,0.25);
     transition: all 0.2s ease;
@@ -297,13 +327,13 @@
 
 #sillypoker-panel .difficulty-title {
     font-family: 'Playfair Display', serif;
-    font-size: 2.5rem;
+    font-size: 2.5em;
     color: var(--gold-accent);
     margin-bottom: 10px;
 }
 
 #sillypoker-panel .difficulty-subtitle {
-    font-size: 1rem;
+    font-size: 1em;
     color: #9ca3af;
     margin-bottom: 30px;
 }
@@ -335,12 +365,12 @@
 
 #sillypoker-panel .difficulty-option-btn h4 {
     margin: 0 0 10px 0;
-    font-size: 1.2rem;
+    font-size: 1.2em;
     font-weight: 500;
 }
 
 #sillypoker-panel .difficulty-option-details {
-    font-size: 0.9rem;
+    font-size: 0.9em;
     color: #9ca3af;
     display: flex;
     flex-direction: column;
@@ -350,6 +380,7 @@
 /* Settings Page Styles */
 #sillypoker-panel .settings-view-container {
     width: 100%;
+    height: 100%;
     padding: 30px;
     display: flex;
     flex-direction: column;
@@ -357,14 +388,16 @@
     box-sizing: border-box;
     max-width: 650px;
     margin: 0 auto;
+    overflow-y: auto; /* ADDED: Make settings scrollable */
 }
 
 #sillypoker-panel .settings-title {
     font-family: 'Playfair Display', serif;
-    font-size: 2.5rem;
+    font-size: 2.5em;
     color: var(--gold-accent);
     margin-bottom: 10px;
     text-align: center;
+    flex-shrink: 0; /* ADDED */
 }
 
 #sillypoker-panel .settings-options-list {
@@ -383,17 +416,18 @@
     align-items: center;
     gap: 20px;
     flex-wrap: wrap;
+    flex-shrink: 0; /* ADDED */
 }
 
 #sillypoker-panel .settings-option-text h4 {
     margin: 0 0 5px 0;
-    font-size: 1.1rem;
+    font-size: 1.1em;
     font-weight: 500;
 }
 
 #sillypoker-panel .settings-option-text p {
     margin: 0;
-    font-size: 0.9rem;
+    font-size: 0.9em;
     color: #9ca3af;
     max-width: 400px;
 }
@@ -412,6 +446,23 @@
 #sillypoker-panel .sillypoker-btn-danger:hover:not(:disabled) {
     background: #b91c1c;
 }
+
+/* ADDED: A generic secondary button style */
+#sillypoker-panel .sillypoker-btn-secondary {
+    background: #4b5563;
+    color: #d1d5db;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+#sillypoker-panel .sillypoker-btn-secondary:hover:not(:disabled) {
+    background: #6b7280;
+    transform: scale(1.05);
+}
+
 
 /* ADDED: Audio Toggle Button Styles */
 #sillypoker-panel .sillypoker-btn-toggle {
@@ -441,7 +492,7 @@
     justify-content: flex-end;
 }
 #sillypoker-panel .bgm-track-info {
-    font-size: 0.9rem;
+    font-size: 0.9em;
     color: #9ca3af;
     font-style: italic;
     white-space: nowrap;
@@ -491,6 +542,47 @@
 #sillypoker-panel input[type="range"].bgm-volume-slider::-moz-range-thumb {
     width: 15px;
     height: 15px;
+    background: var(--text-light);
+    cursor: pointer;
+    border-radius: 50%;
+    border: none;
+}
+
+/* ADDED: Font Size Slider Styles */
+.font-size-control {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex-grow: 1;
+    justify-content: flex-end;
+}
+#font-size-value {
+    min-width: 40px;
+    text-align: right;
+    font-size: 0.9em;
+    color: #9ca3af;
+}
+input[type="range"]#font-size-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 150px;
+    height: 5px;
+    background: #4b5563;
+    border-radius: 5px;
+    outline: none;
+}
+input[type="range"]#font-size-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    background: var(--text-light);
+    cursor: pointer;
+    border-radius: 50%;
+}
+input[type="range"]#font-size-slider::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
     background: var(--text-light);
     cursor: pointer;
     border-radius: 50%;

@@ -72,3 +72,16 @@ export function shuffle(array) {
 
     return array;
 }
+
+
+/**
+ * Determines the visual tier of a chip amount for styling.
+ * @param {number} amount The number of chips.
+ * @returns {number} A tier from 1 to 4.
+ */
+export function getChipTier(amount) {
+    if (amount >= 5000) return 4; // Shimmering Gold
+    if (amount >= 1500) return 3; // Glowing Gold
+    if (amount >= 500) return 2;  // Gold Text
+    return 1;                     // Default
+}

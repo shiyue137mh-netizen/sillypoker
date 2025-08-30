@@ -1,4 +1,3 @@
-
 /**
  * AI Card Table Extension - Command Parser
  * @description Parses text for standardized game commands from the AI.
@@ -71,7 +70,7 @@ export const AIGame_CommandParser = {
         // V2: Added verbose logging for deep debugging
         Logger.log('[Parser V2] Entry:', `"${trimmedStr}"`);
 
-        const validCategories = ['Game:', 'Action:', 'Event:', 'Item:'];
+        const validCategories = ['Game:', 'Action:', 'Event:', 'Item:', 'Map:'];
         if (!validCategories.some(cat => trimmedStr.startsWith(cat))) {
             Logger.warn('[Parser V2] FAIL: String does not start with a valid category.');
             return null;

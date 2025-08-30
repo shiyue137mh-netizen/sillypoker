@@ -1,5 +1,3 @@
-
-
 /**
  * AI Card Table Extension - Entity Data Handler
  * @description Handles commands that directly modify player or enemy data, like [Event:Modify].
@@ -18,6 +16,7 @@ async function _handleEventModify(command) {
 
     const userPlayerName = await context.SillyTavern_API.getContext().substituteParamsExtended('{{user}}');
     const isPlayerTarget = target === '{{user}}' || target === userPlayerName;
+    const targetNameForHistory = isPlayerTarget ? '玩家' : target;
 
     const updater = (data) => {
         modifications.forEach(mod => {
@@ -57,30 +56,49 @@ async function _handleEventModify(command) {
         });
     }
 
-    // Show notifications after the data update
-    const targetNameForToast = isPlayerTarget ? '你' : target;
+    // Show notifications and add history entries after the data update
     modifications.forEach(mod => {
         const { field, operation, value } = mod;
         let amount;
+        let historyText = '';
+        
         switch (field) {
             case 'health':
-                if (operation === 'add' && (amount = Number(value)) < 0)
-                    context.toastr_API.warning(`${targetNameForToast}失去了 ${-amount} 点生命！`);
+                if (operation === 'add' && (amount = Number(value)) !== 0) {
+                    const text = `${targetNameForHistory} ${amount > 0 ? '恢复了' : '失去了'} ${Math.abs(amount)} 点生命！`;
+                    context.toastr_API[amount > 0 ? 'success' : 'warning'](text);
+                    historyText = text;
+                }
                 break;
             case 'chips':
-                if (operation === 'add' && (amount = Number(value)) !== 0)
-                    context.toastr_API[amount > 0 ? 'success' : 'warning'](`${targetNameForToast}${amount > 0 ? '获得了' : '失去了'} ${Math.abs(amount)} 筹码！`);
+                if (operation === 'add' && (amount = Number(value)) !== 0) {
+                    const text = `${targetNameForHistory} ${amount > 0 ? '获得了' : '失去了'} ${Math.abs(amount)} 筹码！`;
+                    context.toastr_API[amount > 0 ? 'success' : 'warning'](text);
+                    historyText = text;
+                }
                 break;
             case 'inventory':
-                if (operation === 'add' && typeof value === 'object')
-                    context.toastr_API.success(`${targetNameForToast}获得了道具：[${value.name}]！`);
+                if (operation === 'add' && typeof value === 'object') {
+                    const text = `${targetNameForHistory} 获得了道具：[${value.name}]！`;
+                    context.toastr_API.success(text);
+                    historyText = text;
+                }
                 break;
             case 'status_effects':
-                if (operation === 'add' && typeof value === 'object')
-                    context.toastr_API.info(`${targetNameForToast}获得了状态：[${value.name}]！`);
-                else if (operation === 'remove')
-                    context.toastr_API.info(`状态 [${value}] 已从${targetNameForToast}身上移除。`);
+                if (operation === 'add' && typeof value === 'object') {
+                    const text = `${targetNameForHistory} 获得了状态：[${value.name}]！`;
+                    context.toastr_API.info(text);
+                    historyText = text;
+                } else if (operation === 'remove') {
+                    const text = `状态 [${value}] 已从 ${targetNameForHistory} 身上移除。`;
+                    context.toastr_API.info(text);
+                    historyText = text;
+                }
                 break;
+        }
+        
+        if (historyText) {
+            context.AIGame_History.addEventEntry({ text: historyText });
         }
     });
 

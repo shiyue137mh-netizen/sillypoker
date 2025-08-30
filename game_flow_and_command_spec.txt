@@ -41,7 +41,7 @@
         4.  **重新渲染**: UI根据更新后的世界书和`visibility`属性，正确地显示玩家的明牌和敌人的牌背。
 
 4.  **角色的回合**
-    *   **角色决策**: 角色读取`sillypoker_current_game_state.json`，根据自己的`play_style`做出决策。
+    *   **角色决策**: 角色读取`sillypoker_current_game_state.json`，并结合系统提示中的`<context>`块，根据自己的`play_style`做出决策。
     *   **角色输出指令**: `[Action:Bet, data:{"player_name":"拦路劫匪", "amount":100}]`
     *   **主控职责 (前端)**: 响应指令，更新彩池和角色筹码，播放动画。
     *   **角色叙事**: (在指令之后) "那个拦路劫匪咧嘴一笑，将一小堆筹码推向彩池中央。"
@@ -53,8 +53,19 @@
         1.  **操作暂存 (Stage)**: 主控将玩家的操作（如 `{type: 'bet', amount: 100}`）添加到一个临时的 `stagedPlayerActions` 列表中。
         2.  **即时UI反馈 (Instant UI Feedback)**: UI **立即** 根据暂存的操作进行更新，例如玩家的筹码在视觉上减少100，暂存区出现一个“下注:100”的标签。**此时，真正的游戏状态（世界书）尚未改变。**
         3.  **操作提交 (Commit)**: 玩家点击“结束回合”按钮。
-        4.  **状态固化与提示生成**: 主控遍历 `stagedPlayerActions` 列表，**此时才真正地**更新相关的世界书条目（如 `sp_player_data.json` 和 `sp_game_state.json`）。然后，将所有操作格式化为一个单一的系统提示：`(系统提示：{{user}}选择了“下注”，金额为100。)`。
+        4.  **状态固化与提示生成**: 主控遍历 `stagedPlayerActions` 列表，**此时才真正地**更新相关的世界书条目（如 `sp_player_data.json` 和 `sp_game_state.json`）。然后，将所有操作格式化为一个包含**完整上下文**的系统提示。
         5.  **触发AI**: 主控将该系统提示发送给AI，通知AI轮到它行动。
+            - **提示格式**:
+              ```
+              (系统提示：{{user}}执行了以下操作：
+              - 下注 100 筹码。
+              )
+              <context>
+              game_type: TexasHoldem
+              current_turn: 拦路劫匪
+              ... (其他所有相关状态)
+              </context>
+              ```
 
 6.  **循环与结束**
     *   流程回到第4步。
@@ -67,6 +78,7 @@
 #### 游戏管理 (Game Management)
 - **`[Game:Start, data:{...}]`**: 初始化一场遭遇/牌局。
   - **`data`**: `{ "game_type": "游戏类型", "players": ["玩家名", "敌人名"], "initial_state": { /* 敌人数据JSON */ } }`
+  - **庄家约定**: `players` 数组的顺序决定了行动顺序，同时 **数组中的最后一个成员将被视为“庄家”(Dealer)**。
   - **主控职责**: 清理旧牌局，用`initial_state`更新`sillypoker_enemy_data.json`，初始化`sillypoker_current_game_state.json`，并在`sillypoker_private_data.json`中创建新牌堆。
 
 - **`[Game:Rule, data:{...}]`**: 定义一个自定义游戏规则。

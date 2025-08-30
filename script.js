@@ -1,10 +1,6 @@
-
-
-
-
 /**
  * AI Card Table Extension for SillyTavern - Main Entry Point
- * @version 8.4.0
+ * @version 8.5.0
  * This script now uses ES6 modules, mirroring the phone simulator's architecture.
  */
 'use strict';
@@ -16,6 +12,15 @@ import { AIGame_Events } from './modules/events.js';
 import { Logger } from './modules/logger.js';
 import { AudioManager } from './modules/audioManager.js';
 import { initRenderer } from './modules/gameRenderer.js';
+import { AIGame_History } from './modules/gameHistory.js';
+
+// NEW: Import all the new view modules
+import { DifficultyView } from './modules/views/DifficultyView.js';
+import { SettingsView } from './modules/views/SettingsView.js';
+import { StoryView } from './modules/views/StoryView.js';
+import { LogView } from './modules/views/LogView.js';
+import { MapView } from './modules/views/MapView.js';
+
 
 // --- Top-level module scope variables ---
 const parentWin = window.parent;
@@ -70,10 +75,22 @@ async function mainInitialize() {
     Logger.log('正在初始化 AI 卡牌桌面...');
 
     AIGame_State.init(parentWin);
+    AIGame_History.init(dependencies); // Initialize Game History
     AudioManager.init(dependencies); // Initialize AudioManager
     initRenderer(dependencies); // Initialize the renderer with dependencies
-    AIGame_DataHandler.init(dependencies, AIGame_UI, AudioManager);
-    AIGame_UI.init(dependencies, AIGame_DataHandler);
+    
+    // REFACTORED: Initialize all view modules
+    const viewModules = {
+        DifficultyView,
+        SettingsView,
+        StoryView,
+        LogView,
+        MapView
+    };
+    Object.values(viewModules).forEach(view => view.init(dependencies, AIGame_DataHandler));
+
+    AIGame_DataHandler.init(dependencies, AIGame_UI, AudioManager, AIGame_History);
+    AIGame_UI.init(dependencies, AIGame_DataHandler, AIGame_History, viewModules); // Pass views to UI Controller
     AIGame_Events.init(dependencies, AIGame_DataHandler, AIGame_UI);
     
     const uiInitialized = await AIGame_UI.initializeUI();
@@ -81,6 +98,9 @@ async function mainInitialize() {
         Logger.error("UI 初始化失败，扩展无法启动。");
         return;
     }
+    
+    // NEW: Apply the persisted font size as soon as the UI element exists.
+    AIGame_UI.applyFontSize();
 
     // Bind global SillyTavern events
     const e = SillyTavernContext.eventTypes;
