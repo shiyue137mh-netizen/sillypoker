@@ -1,0 +1,272 @@
+:root {
+    --card-bg: #f8f8f8;
+    --card-border: #ccc;
+    --text-dark: #222;
+    --red-suit: #d93025;
+    --black-suit: #202124;
+    --gold-accent: #f9a825;
+    --special-glow: 0 0 12px rgba(249, 168, 37, 0.8);
+    --revealed-glow-color: #4ade80; /* Bright Green */
+}
+
+/* --- Card & Hand Styles --- */
+#sillypoker-panel .hand { 
+    display: flex; 
+    justify-content: center;
+}
+
+#sillypoker-panel .horizontal-hand {
+    flex-direction: row;
+    padding-left: 40px; 
+}
+#sillypoker-panel .horizontal-hand > .card {
+    margin-left: -40px; 
+}
+#sillypoker-panel .opponent-container .horizontal-hand {
+     padding-left: 55px;
+}
+#sillypoker-panel .opponent-container .horizontal-hand > .card {
+    margin-left: -55px;
+}
+
+#sillypoker-panel .vertical-hand {
+    flex-direction: column;
+    width: 100px;
+    align-items: center;
+    padding-top: 80px;
+}
+#sillypoker-panel .vertical-hand > .card {
+    margin-top: -80px; 
+}
+
+#sillypoker-panel .player-position-container .card { 
+    cursor: pointer;
+}
+#sillypoker-panel .player-position-container .card:hover { 
+    transform: translateY(-15px) scale(1.05); 
+    z-index: 20; 
+}
+
+#sillypoker-panel .card { 
+    width: 80px;
+    height: 112px;
+    background-color: #ffffff;
+    border: 1px solid var(--card-border); 
+    border-radius: 6px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2); 
+    position: relative; 
+    box-sizing: border-box; 
+    font-family: 'Playfair Display', serif; 
+    font-weight: 700; 
+    user-select: none; 
+    display: block;
+    /* REFACTORED: Unified transition for reveal effect */
+    transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.3s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.2s ease-out, border-color 0.2s ease-out, width 0.2s, height 0.2s;
+}
+
+#sillypoker-panel .card.selected {
+    box-shadow: 0 0 15px var(--gold-accent), 0 5px 15px rgba(0,0,0,0.4);
+    border-color: var(--gold-accent);
+    transform: translateY(-25px) scale(1.08) !important; 
+    z-index: 25; 
+}
+#sillypoker-panel .card.selected:hover {
+    transform: translateY(-30px) scale(1.1) !important; 
+    z-index: 26; 
+}
+
+/* DYNAMIC LAYOUT: Styles for large hands (6-10 cards) - MODIFIED FOR READABILITY */
+#sillypoker-panel .horizontal-hand.large-hand > .card {
+    margin-left: -50px; 
+}
+#sillypoker-panel .vertical-hand.large-hand > .card {
+    margin-top: -88px; 
+}
+#sillypoker-panel .hand.large-hand .card {
+    width: 74px;
+    height: 104px;
+}
+
+/* DYNAMIC LAYOUT: Styles for extra large hands (11+ cards) - MODIFIED FOR READABILITY */
+#sillypoker-panel .horizontal-hand.xl-hand > .card {
+    margin-left: -42px; /* Less overlap */
+}
+#sillypoker-panel .hand.xl-hand .card {
+    width: 60px; /* Bigger cards */
+    height: 84px;
+}
+#sillypoker-panel .opponent-container .horizontal-hand.xl-hand > .card {
+    margin-left: -44px; /* Less overlap for opponents */
+}
+#sillypoker-panel .vertical-hand.xl-hand > .card {
+    margin-top: -72px; /* Less vertical overlap */
+}
+
+
+#sillypoker-panel .card.special { 
+    box-shadow: var(--special-glow); 
+    border: 1px solid var(--gold-accent); 
+}
+
+#sillypoker-panel .card.card-back {
+    background-image: url('../assets/images/card_back.png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    border: 1px solid #2a4b6e;
+}
+#sillypoker-panel .card.card-back * { 
+    display: none; 
+}
+
+#sillypoker-panel .community-cards .card {
+    width: 70px;
+    height: 98px;
+    transition: transform 0.3s ease;
+}
+#sillypoker-panel .community-cards .card:hover {
+    transform: translateY(-10px) scale(1.05);
+    z-index: 20; 
+}
+
+#sillypoker-panel .card.player-hidden {
+    filter: brightness(0.7);
+    position: relative;
+}
+#sillypoker-panel .card.player-hidden::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5); /* MODIFIED: Increased opacity from 0.3 */
+    border-radius: 6px;
+    pointer-events: none;
+}
+#sillypoker-panel .card.revealed {
+    border-color: var(--revealed-glow-color);
+    box-shadow: 0 0 15px rgba(74, 222, 128, 0.7), 0 5px 15px rgba(0,0,0,0.4);
+}
+
+#sillypoker-panel .card .card-delete-btn {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 20px;
+    height: 20px;
+    background-color: rgba(0, 0, 0, 0.6);
+    color: #fff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.5em;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s ease-in-out, background-color 0.2s ease-in-out;
+    pointer-events: none;
+    z-index: 30;
+}
+#sillypoker-panel .card:hover .card-delete-btn {
+    opacity: 1;
+    pointer-events: auto;
+}
+#sillypoker-panel .card .card-delete-btn:hover {
+    background-color: #ef4444; 
+}
+
+
+/* --- Card Face Design (CSS) --- */
+.card .card-corner {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    line-height: 1;
+}
+.card .top-left {
+    top: 5px;
+    left: 5px;
+}
+.card .bottom-right {
+    bottom: 5px;
+    right: 5px;
+    transform: rotate(180deg);
+}
+.card .card-corner-rank {
+    font-size: 1.0em;
+}
+.card .card-corner-suit {
+    font-size: 0.9em;
+    margin-top: -1px;
+}
+.card .card-center-suit {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 3.5em;
+    opacity: 0.9;
+}
+/* Joker specific styles */
+.card .joker-text {
+    position: absolute;
+    font-size: 0.7em;
+    font-weight: bold;
+}
+.card .joker-text.top-left { top: 5px; left: 7px; }
+.card .joker-text.bottom-right { bottom: 5px; right: 7px; transform: rotate(180deg); }
+.card .joker-icon {
+    font-size: 3.5em;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+
+/* Suit Colors */
+.card.suit-red {
+    color: var(--red-suit);
+}
+.card.suit-black {
+    color: var(--black-suit);
+}
+
+/* REBUILT: Unified flying card animation (visual only) */
+.animated-deal-card {
+    position: absolute;
+    /* width/height are set by JS now */
+    background-image: url('../assets/images/card_back.png');
+    background-size: cover;
+    background-position: center;
+    border: 1px solid #2a4b6e;
+    border-radius: 6px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+    z-index: 1000;
+    pointer-events: none;
+    /* MODIFIED: Easing function for non-linear movement, extended duration */
+    transition: all 0.6s cubic-bezier(0.2, 0.6, 0.3, 1); 
+}
+
+/* --- NEW: CSS Card Play Animation --- */
+@keyframes card-play-animation {
+  to {
+    transform: translate(var(--target-x), var(--target-y)) scale(0.5) rotate(15deg);
+    opacity: 0;
+  }
+}
+
+.card-play-animation {
+  animation: card-play-animation 0.6s cubic-bezier(0.5, 0, 0.9, 0.5) forwards;
+}
+
+/* --- REBUILT: Card appearance animation for the final "landing" effect --- */
+/* This class is added by the renderer to cards that should be animated. */
+/* The card starts transparent and is revealed by the animation. */
+#sillypoker-panel .card.newly-dealt {
+    opacity: 0;
+    transform: scale(0.9);
+    pointer-events: none; /* Prevent interaction while invisible */
+}

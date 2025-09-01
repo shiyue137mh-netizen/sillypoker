@@ -1,0 +1,106 @@
+:root {
+    --story-bg: #111827;
+    --story-text: #d1d5db;
+    --story-input-bg: #1f2937;
+    --story-input-border: #374151;
+    --story-send-btn-bg: var(--button-primary);
+    --story-send-btn-hover: var(--button-primary-hover);
+}
+
+#sillypoker-panel .story-view-container {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    background-color: var(--story-bg);
+    position: relative; /* Needed for absolute positioning of the FAB */
+}
+
+#sillypoker-panel .story-message-display {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding: 20px;
+    color: var(--story-text);
+    line-height: 1.6;
+    font-size: 0.9em;
+}
+
+/* Basic markdown styling */
+.story-message-display p { margin-bottom: 1em; }
+.story-message-display h1, .story-message-display h2, .story-message-display h3 { margin-top: 1.5em; margin-bottom: 0.5em; color: var(--gold-accent); }
+.story-message-display ul, .story-message-display ol { padding-left: 2em; }
+.story-message-display blockquote { border-left: 3px solid var(--story-input-border); padding-left: 1em; margin-left: 0; color: #9ca3af; }
+.story-message-display code { background-color: var(--story-input-bg); padding: 2px 5px; border-radius: 4px; font-family: monospace; }
+.story-message-display pre { background-color: var(--story-input-bg); padding: 1em; border-radius: 8px; overflow-x: auto; }
+
+/* NEW: Floating Action Button (FAB) for Dice Roller */
+#sillypoker-panel .story-fab-container {
+    position: absolute;
+    bottom: 75px; /* Position above the input form */
+    right: 20px;
+    z-index: 10;
+}
+
+#sillypoker-panel .story-fab-btn {
+    width: 52px;
+    height: 52px;
+    background-color: var(--button-primary);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    font-size: 1.5em; /* Make the emoji bigger */
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+#sillypoker-panel .story-fab-btn:hover {
+    transform: scale(1.1);
+    background-color: var(--button-primary-hover);
+}
+
+
+#sillypoker-panel .story-input-form {
+    flex-shrink: 0;
+    padding: 15px;
+    background-color: var(--header-bg);
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    gap: 10px;
+}
+
+#sillypoker-panel #story-narrative-input {
+    flex-grow: 1;
+    background-color: var(--story-input-bg);
+    border: 1px solid var(--story-input-border);
+    border-radius: 6px;
+    color: var(--story-text);
+    padding: 10px;
+    resize: none;
+    font-family: 'Roboto', sans-serif;
+    font-size: 0.9em;
+}
+ #sillypoker-panel #story-narrative-input:focus {
+    outline: none;
+    border-color: var(--button-primary);
+    box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.5);
+}
+
+#sillypoker-panel .story-send-btn {
+    background: var(--story-send-btn-bg);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 0 20px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    flex-shrink: 0;
+}
+
+#sillypoker-panel .story-send-btn:hover {
+    background: var(--story-send-btn-hover);
+}

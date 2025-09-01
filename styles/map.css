@@ -1,0 +1,353 @@
+:root {
+    --map-bg: #1a1a1a;
+    --path-color: #4a5568;
+    --node-glow: #f9a825;
+    --node-glow-current: #4299e1;
+    --node-glow-selected: #4ade80;
+    --text-light: #e0e0e0;
+    /* ADDED: Property Glow Colors */
+    --prop-glow-blessed: #fef08a; /* Soft Yellow */
+    --prop-glow-cursed: #c084fc;  /* Soft Purple */
+    --prop-glow-wealthy: #fcd34d; /* Gold */
+    --prop-glow-volatile: #f87171; /* Soft Red */
+    --prop-glow-ambush: #fb923c;   /* Orange */
+}
+
+/* ADDED: Keyframes for property glows */
+@keyframes property-glow-blessed {
+    0% { filter: drop-shadow(0 0 7px var(--prop-glow-blessed)); }
+    50% { filter: drop-shadow(0 0 14px var(--prop-glow-blessed)); }
+    100% { filter: drop-shadow(0 0 7px var(--prop-glow-blessed)); }
+}
+@keyframes property-glow-cursed {
+    0% { filter: drop-shadow(0 0 7px var(--prop-glow-cursed)); }
+    50% { filter: drop-shadow(0 0 14px var(--prop-glow-cursed)); }
+    100% { filter: drop-shadow(0 0 7px var(--prop-glow-cursed)); }
+}
+@keyframes property-glow-wealthy {
+    0% { filter: drop-shadow(0 0 7px var(--prop-glow-wealthy)); }
+    50% { filter: drop-shadow(0 0 14px var(--prop-glow-wealthy)); }
+    100% { filter: drop-shadow(0 0 7px var(--prop-glow-wealthy)); }
+}
+@keyframes property-glow-volatile {
+    0% { filter: drop-shadow(0 0 7px var(--prop-glow-volatile)); }
+    50% { filter: drop-shadow(0 0 14px var(--prop-glow-volatile)); }
+    100% { filter: drop-shadow(0 0 7px var(--prop-glow-volatile)); }
+}
+@keyframes property-glow-ambush {
+    0% { filter: drop-shadow(0 0 7px var(--prop-glow-ambush)); }
+    50% { filter: drop-shadow(0 0 14px var(--prop-glow-ambush)); }
+    100% { filter: drop-shadow(0 0 7px var(--prop-glow-ambush)); }
+}
+
+
+#sillypoker-panel .map-view-wrapper { 
+    display: flex; 
+    flex-direction: row; /* Changed to row for side panel */
+    width: 100%; 
+    height: 100%; 
+    background: var(--map-bg); 
+}
+#sillypoker-panel .map-main-content {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; /* Important for pan-zoom container */
+}
+/* MODIFIED: Restructured for better centering and widened */
+#sillypoker-panel .map-details-panel {
+    width: 350px; /* Increased from 300px */
+    flex-shrink: 0;
+    background: #111827;
+    border-left: 1px solid #374151;
+    padding: 20px;
+    color: var(--text-light);
+    display: flex;
+    flex-direction: column;
+}
+/* ADDED: A new container for the main content to enforce centering */
+#sillypoker-panel .details-main-content {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    text-align: center;
+}
+
+#sillypoker-panel .details-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: #6b7280;
+    height: 100%;
+    font-style: italic;
+}
+#sillypoker-panel .details-title {
+    font-size: 1.5em;
+    font-weight: 500;
+    color: var(--gold-accent);
+    text-align: center;
+}
+#sillypoker-panel .details-icon {
+    text-align: center;
+    font-size: 4em;
+    opacity: 0.8;
+}
+#sillypoker-panel .details-description {
+    font-size: 0.9em;
+    color: #9ca3af;
+    text-align: center;
+    line-height: 1.5;
+    word-break: break-word; /* FIX: Prevents text overflow */
+}
+#sillypoker-panel .details-instructions {
+    margin-top: auto; /* Pushes to the bottom */
+    font-size: 0.8em;
+    color: #4b5563;
+    text-align: center;
+    padding-top: 10px; /* Give it some space from content above */
+}
+
+#sillypoker-panel .details-actions {
+    margin-top: 15px;
+    display: flex;
+    justify-content: center;
+    width: 100%; /* Ensure button can be full width */
+}
+
+#sillypoker-panel .map-travel-btn {
+    background: #4f46e5; 
+    color: white; 
+    border: none; 
+    padding: 8px 16px; 
+    border-radius: 5px; 
+    cursor: pointer; 
+    font-size: 0.7em;
+    font-weight: 500;
+    width: 100%;
+    transition: background-color 0.2s;
+}
+
+#sillypoker-panel .map-travel-btn:hover { 
+    background: #4338ca; 
+}
+
+#sillypoker-panel .map-header { 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    padding: 8px 16px; 
+    background-color: #111827; 
+    border-bottom: 1px solid #374151; 
+    flex-shrink: 0; 
+    color: var(--text-light); 
+}
+#sillypoker-panel .map-header-title { 
+    margin: 0;
+    font-size: 0.8em; 
+}
+#sillypoker-panel .map-header-buttons { 
+    display: flex; 
+    gap: 10px; 
+    align-items: center;
+}
+#sillypoker-panel .map-action-btn { 
+    background: #4f46e5; 
+    color: white; 
+    border: none; 
+    padding: 6px 12px; 
+    border-radius: 5px; 
+    cursor: pointer; 
+    font-size: 0.65em; 
+}
+#sillypoker-panel .map-action-btn:hover { 
+    background: #4338ca; 
+}
+
+#sillypoker-panel .map-zoom-controls {
+    display: flex;
+    gap: 4px;
+    margin-left: 10px;
+}
+
+#sillypoker-panel .map-zoom-btn {
+    background: #374151;
+    border: 1px solid #4b5563;
+    color: var(--text-light);
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    font-size: 0.8em;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+#sillypoker-panel .map-zoom-btn:hover {
+    background: #4b5563;
+}
+
+
+#sillypoker-panel .map-pan-zoom-container {
+    flex-grow: 1;
+    overflow: hidden;
+    cursor: grab;
+    position: relative;
+}
+#sillypoker-panel .map-pan-zoom-container:active {
+    cursor: grabbing;
+}
+#sillypoker-panel .map-canvas {
+    position: relative;
+    width: 600px;
+    height: 800px;
+    transform-origin: 0 0;
+}
+#sillypoker-panel .map-svg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    pointer-events: none; /* Paths should not block interaction */
+}
+#sillypoker-panel .map-nodes-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 600px;
+    height: 800px;
+}
+#sillypoker-panel .map-path { 
+    stroke: var(--path-color); 
+    stroke-width: 3; 
+    transition: stroke 0.3s ease; 
+}
+#sillypoker-panel .map-path.traveled {
+    stroke: var(--node-glow-current);
+    stroke-width: 4;
+}
+#sillypoker-panel .map-node {
+    position: absolute;
+    transform: translate(-50%, -50%); /* Center the node on its coordinates */
+    transition: transform 0.2s ease-out, opacity 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+#sillypoker-panel .map-node:not(.unreachable):not(.visited):hover > .node-bg { 
+    transform: scale(1.2); 
+}
+#sillypoker-panel .map-node.reachable { 
+    cursor: pointer; 
+}
+#sillypoker-panel .map-node.reachable > .node-bg { 
+    filter: drop-shadow(0 0 8px var(--node-glow)); 
+}
+#sillypoker-panel .map-node.selected > .node-bg {
+    stroke: var(--node-glow-selected);
+    filter: drop-shadow(0 0 12px var(--node-glow-selected));
+    transform: scale(1.1);
+}
+#sillypoker-panel .map-node.current-position > .node-bg { 
+    stroke: var(--node-glow-current); 
+    filter: drop-shadow(0 0 12px var(--node-glow-current)); 
+    transform: scale(1.1); 
+}
+#sillypoker-panel .map-node.visited { 
+    opacity: 0.5; 
+}
+#sillypoker-panel .map-node.unreachable { 
+    opacity: 0.3; 
+    pointer-events: none; 
+}
+#sillypoker-panel .node-bg { 
+    stroke-width: 3; 
+    transition: all 0.2s ease-out; 
+    transform-origin: center;
+}
+#sillypoker-panel .node-icon { 
+    font-family: "Font Awesome 5 Free"; 
+    font-weight: 900; 
+    color: var(--text-light); 
+    font-size: 1.5em; 
+    position: absolute;
+    pointer-events: none; 
+}
+
+/* ADDED: Property Glow Animations */
+.map-node.property-blessed .node-bg { animation: property-glow-blessed 2.5s infinite ease-in-out; }
+.map-node.property-cursed .node-bg { animation: property-glow-cursed 2.5s infinite ease-in-out; }
+.map-node.property-wealthy .node-bg { animation: property-glow-wealthy 2.5s infinite ease-in-out; }
+.map-node.property-volatile .node-bg { animation: property-glow-volatile 2.5s infinite ease-in-out; }
+.map-node.property-ambush .node-bg { animation: property-glow-ambush 2.5s infinite ease-in-out; }
+
+/* Node Type Styles */
+#sillypoker-panel .node-enemy .node-bg { fill: #2d3748; stroke: #4a5568; }
+#sillypoker-panel .node-elite .node-bg { fill: #b7791f; stroke: #ddab4d; }
+#sillypoker-panel .node-shop .node-bg { fill: #2c5282; stroke: #63b3ed; }
+#sillypoker-panel .node-rest .node-bg { fill: #2f855a; stroke: #68d391; }
+#sillypoker-panel .node-event .node-bg { fill: #5b21b6; stroke: #a78bfa; }
+#sillypoker-panel .node-boss .node-bg { fill: #9b2c2c; stroke: #f56565; }
+#sillypoker-panel .node-treasure .node-bg { fill: #a16207; stroke: #f59e0b; } /* Gold/Yellow for treasure */
+#sillypoker-panel .node-card-sharp .node-bg { fill: #5b21b6; stroke: #c084fc; } /* Purple for card sharp */
+
+/* ADDED: Hidden Room Styles */
+#sillypoker-panel .node-hidden-room .node-bg,
+#sillypoker-panel .node-super-hidden-room .node-bg {
+    fill: #4a5568; 
+    stroke: #718096;
+}
+#sillypoker-panel .node-hidden-room,
+#sillypoker-panel .node-super-hidden-room {
+    pointer-events: none; /* Make them non-interactive */
+}
+#sillypoker-panel .node-hidden-room .node-icon,
+#sillypoker-panel .node-super-hidden-room .node-icon {
+    font-size: 1.2em; /* Smaller icon */
+}
+
+/* ADDED: Shake animation for finding secret rooms */
+@keyframes node-shake-translate {
+  10%, 90% { transform: translate(-51%, -50%); }
+  20%, 80% { transform: translate(-49%, -50%); }
+  30%, 50%, 70% { transform: translate(-52%, -50%); }
+  40%, 60% { transform: translate(-48%, -50%); }
+}
+
+.shake-animation {
+  animation: node-shake-translate 0.8s cubic-bezier(.36,.07,.19,.97);
+}
+
+/* ADDED: Node Reveal Animations */
+@keyframes reveal-node {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.5);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+    }
+}
+
+@keyframes draw-path {
+    from {
+        stroke-dashoffset: 1;
+    }
+    to {
+        stroke-dashoffset: 0;
+    }
+}
+
+.revealing-node {
+    animation: reveal-node 0.6s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
+.revealing-path {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    animation: draw-path 0.8s ease-out forwards;
+    animation-delay: 0.2s; /* Start drawing after node appears */
+}

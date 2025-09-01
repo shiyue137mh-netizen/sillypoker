@@ -1,0 +1,244 @@
+# SillyPoker - 指令全面测试套件 (Command Test Suite) v1.0
+# 使用方法: 将任何一个指令块复制并粘贴到聊天框中发送，以测试插件的响应。
+# 监控浏览器的开发者控制台（F12 -> Console）以查看详细的 [SillyPoker] 日志输出。
+
+# ===============================================
+# 1. 游戏初始化与设置 (Game Initialization & Setup)
+# ===============================================
+
+# --- 测试 1.1: 标准德州扑克开始 ---
+# 预期: 初始化一场2人德州扑克，敌人数据被设置，并创建一副标准52张牌堆。
+<command>
+[Game:Start, data:{"game_type": "TexasHoldem", "players": ["{{user}}", "拦路劫匪"], "initial_state": { "name": "拦路劫匪", "play_style": "Aggressive", "chips": 800, "hand": [] }}]
+</command>
+
+
+# --- 测试 1.2: 自定义牌堆 (四人斗地主) ---
+# 预期: 正确设置一个包含两副牌和四张王牌的牌堆。必须在 Game:Start 之后。
+# UI应能正确渲染4个玩家位置。
+<command>
+[Game:Start, data:{"game_type": "DouDiZhu_4Player", "players": ["{{user}}", "赌圣", "赌侠", "赌神"], "initial_state": { "name": "AI Opponent", "play_style": "Unpredictable", "chips": 1000, "hand": [] }}]
+[Game:SetupDeck, data:{"num_decks": 2, "jokers": 4}]
+</command>
+
+
+# --- 测试 1.3: 缺少 initial_state (容错测试) ---
+# 预期: 游戏应能正常开始，但敌人数据可能为空或使用默认值。控制台应有警告。
+<command>
+[Game:Start, data:{"game_type": "Blackjack", "players": ["{{user}}", "庄家"]}]
+</command>
+
+
+# ===============================================
+# 2. 发牌与卡牌操作 (Dealing & Card Manipulation)
+# ===============================================
+
+# --- 测试 2.1: 标准发牌 ---
+# 预期: 为玩家发2张私有牌，为敌人发2张隐藏牌，发出3张公共牌。
+<command>
+[Game:Function, type:发牌, data:{"actions":[
+  {"target":"player", "count":2, "visibility":"owner"},
+  {"target":"enemy", "name":"拦路劫匪", "count":2, "visibility":"owner"},
+  {"target":"board", "count":3, "visibility":"public"}
+]}]
+</command>
+
+
+# --- 测试 2.2: 多人发牌 (基于测试1.2) ---
+# 预期: 为所有4个参与者（1玩家3敌人）每人发25张牌。
+<command>
+[Game:Function, type:发牌, data:{"actions":[
+    {"target":"player", "count":25, "visibility":"owner"},
+    {"target":"enemy", "name":"赌圣", "count":25, "visibility":"owner"},
+    {"target":"enemy", "name":"赌侠", "count":25, "visibility":"owner"},
+    {"target":"enemy", "name":"赌神", "count":25, "visibility":"owner"}
+]}]
+</command>
+
+
+# --- 测试 2.3: 修改卡牌 (公开对手手牌) ---
+# 预期: 将名为“拦路劫匪”的对手的所有手牌都变为公开可见。
+<command>
+[Game:Function, type:Modify, data:{"targets":[{"location":"enemy_hand", "enemy_name":"拦路劫匪", "operation":"update", "card_filter":{"index":"all"}, "modifications":[{"field":"visibility", "operation":"set", "value":"public"}]}]}]
+</command>
+
+
+# --- 测试 2.4: 修改卡牌 (改变点数和花色) ---
+# 预期: 将玩家手牌中的第一张牌强制变为红桃A。
+<command>
+[Game:Function, type:Modify, data:{"targets":[{"location":"player_hand", "operation":"update", "card_filter":{"index":0}, "modifications":[{"field":"rank", "operation":"set", "value":"A"}, {"field":"suit", "operation":"set", "value":"♥"}]}]}]
+</command>
+
+
+# --- 测试 2.5: 添加卡牌 ---
+# 预期: 凭空向公共牌区添加一张黑桃K。
+<command>
+[Game:Function, type:Modify, data:{"targets":[{"location":"board", "operation":"add", "cards_to_add":[{"rank":"K", "suit":"♠", "visibility":"public"}]}]}]
+</command>
+
+
+# --- 测试 2.6: 移除卡牌 ---
+# 预期: 从公共牌区移除所有红桃(♥)花色的牌。
+<command>
+[Game:Function, type:Modify, data:{"targets":[{"location":"board", "operation":"remove", "card_filter":{"suit":"♥", "index":"all"}}]}]
+</command>
+
+# --- 测试 2.7: 交换卡牌 (随机) ---
+# 预期: 随机交换玩家的一张手牌和对手的一张手牌。
+<command>
+[Action:SwapCards, data:{"swap_type":"random", "source":{"location":"player_hand"}, "destination":{"location":"enemy_hand", "enemy_name":"拦路劫匪"}, "count":1}]
+</command>
+
+
+# ===============================================
+# 3. 游戏流程控制 (Game Flow Control)
+# ===============================================
+
+# --- 测试 3.1: 完整行动序列 (下注 -> 摊牌) ---
+# 预期: 敌人下注100，然后摊牌。UI和数据应正确反映筹码变化和手牌公开。
+<command>
+[Action:Bet, data:{"player_name":"拦路劫匪", "amount":100}]
+[Action:Showdown, data:{"player_name":"拦路劫匪"}]
+</command>
+
+
+# --- 测试 3.2: 游戏胜利结算 ---
+# 预期: 宣告玩家胜利，游戏结束，玩家获得1000筹码奖励。UI返回地图/难度选择界面。
+<command>
+[Game:End, data:{"result":"win", "reason":"你的牌面更大。"}]
+[Event:Modify, data:{"target":"{{user}}", "modifications":[ {"field":"chips", "operation":"add", "value":1000} ]}]
+</command>
+
+
+# --- 测试 3.3: 游戏失败结算 ---
+# 预期: 宣告玩家失败，游戏结束，玩家失去1点生命值。
+<command>
+[Game:End, data:{"result":"lose", "reason":"对手的牌面更大。"}]
+</command>
+
+
+# --- 测试 3.4: 击败首领 (关键测试) ---
+# 预期: 宣告玩家战胜首领，游戏结束。地图界面应出现“前往下一层”按钮。
+<command>
+[Game:End, data:{"result":"boss_win", "reason":"你击败了本层首领！"}]
+</command>
+
+# --- 测试 3.5: 玩家死亡 (强制重置) ---
+# 预期: UI应显示死亡信息，并立即返回到难度选择界面，无论玩家当前生命值多少。
+<command>
+[Game:End, data:{"result":"dead", "reason":"你在陷阱中耗尽了所有运气。"}]
+</command>
+
+
+# ===============================================
+# 4. 实体状态修改 (Entity State Modification)
+# ===============================================
+
+# --- 测试 4.1: 复杂事件 (增减益) ---
+# 预期: 玩家筹码减少100，生命值增加1，并获得一个名为“专注”的状态效果。
+<command>
+[Event:Modify, data:{"target":"{{user}}", "modifications":[
+    {"field":"chips", "operation":"add", "value":-100},
+    {"field":"health", "operation":"add", "value":1},
+    {"field":"status_effects", "operation":"add", "value":{"icon":"🎯", "name":"专注", "description":"下一次行动不会被敌人的能力所干扰。", "duration":1}}
+]}]
+</command>
+
+
+# --- 测试 4.2: 获得道具 ---
+# 预期: 玩家获得一个名为“老千的袖箭”的主动道具，并显示在道具栏。
+<command>
+[Event:Modify, data:{"target":"{{user}}", "modifications":[
+    {"field":"inventory", "operation":"add", "value":{"icon":"🎲", "name":"老千的袖箭", "description":"主动使用：在本回合中，你可以指定一张公共牌将其作废。", "type":"active"}}
+]}]
+</command>
+
+
+# --- 测试 4.3: 移除状态效果 ---
+# 预期: 移除玩家身上的“专注”状态效果。
+<command>
+[Event:Modify, data:{"target":"{{user}}", "modifications":[ {"field":"status_effects", "operation":"remove", "value":"专注"} ]}]
+</command>
+
+
+# ===============================================
+# 5. UI 与其他指令 (UI & Miscellaneous)
+# ===============================================
+
+# --- 测试 5.1: 游戏提示 ---
+# 预期: 游戏界面顶部出现一个提示气泡，内容为指定的文本。
+<command>
+[Game:Hint, data:{"text": "这是一个测试提示，用于指导玩家。它会在游戏开始或结束后消失。"}]
+</command>
+
+
+# ===============================================
+# 6. 地图修改指令 (Map Modification)
+# ===============================================
+
+# --- 测试 6.1: 远期奖励 (藏宝图) ---
+# 预期: 地图上一个未来的、未访问过的、路径稀疏的“敌人”节点会变为“宝箱”节点。UI应弹出“藏宝图”提示。
+<command>
+[Map:Modify, data:{
+    "target_filter": {
+        "type": "enemy",
+        "scope": "future",
+        "selection_priority": {"row": "random", "density": "sparsest"}
+    },
+    "modification": {"field": "type", "value": "treasure"},
+    "effect_description": "藏宝图似乎标记出了一个宝箱的位置！"
+}]
+</command>
+
+
+# --- 测试 6.2: 近期威胁 (伏击) ---
+# 预期: 玩家下一步可达的路径中，如果有一个“休息”节点，它会变为“精英”节点。UI应弹出“被占据”提示。
+<command>
+[Map:Modify, data:{
+    "target_filter": {
+        "type": "rest",
+        "scope": "reachable"
+    },
+    "modification": {"field": "type", "value": "elite"},
+    "effect_description": "前方的休息点似乎被一个强大的敌人占据了！"
+}]
+</command>
+
+
+# ===============================================
+# 7. 错误与边缘情况测试 (Error & Edge Cases)
+# ===============================================
+
+# --- 测试 7.1: 格式错误的JSON ---
+# 预期: 解析器应优雅地失败，并在控制台打印错误。游戏状态不应被破坏。
+<command>
+[Game:Start, data:{"game_type": "TexasHoldem", "players": ["{{user}}", "错误角色"], "initial_state": { name: "错误角色" }}]
+</command>
+
+
+# --- 测试 7.2: 无效指令类别 ---
+# 预期: 解析器应忽略此指令，并在控制台打印警告。
+<command>
+[Invalid:Command, data:{"value":123}]
+</command>
+
+
+# --- 测试 7.3: 嵌套JSON指令 (压力测试) ---
+# 预期: 解析器应能正确解析包含复杂JSON的指令，例如在道具中添加一个包含数组的对象。
+<command>
+[Event:Modify, data:{"target":"{{user}}", "modifications":[
+    {"field":"inventory", "operation":"add", "value":{
+        "icon":"📜",
+        "name":"复杂的卷轴",
+        "description":"一个带有复杂数据的道具。",
+        "type":"passive",
+        "extra_data": {
+            "effects": [
+                {"type": "draw", "amount": 1},
+                {"type": "damage", "value": 5, "targets": ["random_enemy"]}
+            ],
+            "is_cursed": false
+        }
+    }}
+]}]
+</command>

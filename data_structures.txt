@@ -1,0 +1,115 @@
+# SillyPoker - 主数据结构定义 v1.1
+
+本文档定义了玩家与敌人的核心公开数据结构，以及玩家的私有卡牌数据结构。
+
+## 1. 玩家公开数据 (sillypoker_player_data.json)
+
+这个条目存储所有AI可以看到的玩家状态。
+
+{
+  "comment": "玩家的公开数据，AI可见。包含生命值、筹码、道具和状态。",
+  "health": 3,
+  "max_health": 3,
+  "chips": 1000,
+  "inventory": [
+    {
+      "id": "item_lucky_coin",
+      "name": "幸运硬币",
+      "description": "每场牌局开始时，有15%的几率额外抽取一张牌。",
+      "type": "passive"
+    }
+  ],
+  "status_effects": [
+    {
+      "id": "status_confident",
+      "name": "信心满满",
+      "description": "下一次下注时，虚张声势的成功率提高。",
+      "duration": 1 
+    }
+  ]
+}
+
+- **health**: (number) 玩家当前生命值。在Roguelike模式中，输掉一整场牌局会消耗一点。
+- **max_health**: (number) 玩家最大生命值。
+- **chips**: (number) 玩家当前拥有的筹码。
+- **inventory**: (array of objects) 玩家持有的被动道具列表。
+  - **id**: (string) 道具的唯一标识符。
+  - **name**: (string) 道具名称。
+  - **description**: (string) 道具效果描述。
+  - **type**: (string) "passive" 表示被动道具，获得后永久生效。
+- **status_effects**: (array of objects) 玩家当前的状态效果列表。
+  - **id**: (string) 状态的唯一标识符。
+  - **name**: (string) 状态名称。
+  - **description**: (string) 状态效果描述。
+  - **duration**: (number) 状态持续的回合数。-1表示永久。
+
+## 2. 敌人公开数据 (sillypoker_enemy_data.json)
+
+存储当前遭遇的所有敌人的公开状态。
+
+{
+  "comment": "当前遭遇的所有敌人的数据集合。",
+  "enemies": [
+    {
+      "name": "拦路劫匪",
+      "play_style": "Aggressive",
+      "chips": 800,
+      "hand": [
+        {
+          "suit": "♥",
+          "rank": "A",
+          "is_special": false,
+          "name": "♥A",
+          "visibility": "owner"
+        },
+        {
+          "suit": "♠",
+          "rank": "K",
+          "is_special": false,
+          "name": "♠K",
+          "visibility": "public"
+        }
+      ]
+    }
+  ]
+}
+
+- **enemies**: (array of objects) 场上所有敌人的列表。
+  - **name**: (string) 敌人的名字，必须唯一。
+  - **play_style**: (string) 描述AI行为模式的关键词 (例如: "Aggressive", "Cautious")。
+  - **chips**: (number) 敌人当前筹码。
+  - **hand**: (array of card objects) 敌人的手牌。
+    - **visibility**: (string) "owner"表示AI可见但玩家不可见（显示牌背），"public"表示所有人可见。
+
+## 3. 玩家私有卡牌数据 (sillypoker_player_cards.json)
+
+这个条目专门存储玩家的手牌，AI可以看到此条目，但具体卡牌的可见性由`visibility`属性控制。
+
+{
+  "comment": "玩家的手牌。AI可以看到这个列表，但只有visibility为public的牌才能看到牌面。",
+  "current_hand": [
+    {
+      "suit": "♦",
+      "rank": "7",
+      "is_special": false,
+      "name": "♦7",
+      "visibility": "owner"
+    },
+    {
+      "suit": "♣",
+      "rank": "J",
+      "is_special": true,
+      "name": "千变牌",
+      "description": "这张牌可以作为任何点数或花色使用。",
+      "visibility": "owner"
+    }
+  ]
+}
+
+- **current_hand**: (array of card objects) 玩家当前的手牌列表。
+  - **suit**: (string) 卡牌花色 (♥, ♦, ♣, ♠)。
+  - **rank**: (string) 卡牌点数 (A, 2, ..., 10, J, Q, K)。
+  - **is_special**: (boolean) 标记这是否是一张具有特殊规则的卡牌。
+  - **name**: (string) 卡牌的显示名称。
+  - **description**: (string, optional) 特殊卡牌的效果描述。
+  - **visibility**: (string) "owner" 表示只有玩家自己可见。在21点等游戏中，可能会有"public"的牌。

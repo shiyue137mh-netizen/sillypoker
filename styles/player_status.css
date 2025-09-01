@@ -1,0 +1,274 @@
+:root {
+    --status-bg: rgba(17, 24, 39, 0.8);
+    --status-border: #4b5563;
+    --gold-accent: #f9a825;
+    --health-red: #ef4444;
+    --text-light: #e0e0e0;
+}
+
+#sillypoker-panel .player-hud {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+}
+
+#sillypoker-panel .game-type-display {
+    background: rgba(17, 24, 39, 0.6);
+    color: #9ca3af;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.8em;
+    font-weight: 500;
+    border: 1px solid var(--status-border);
+    white-space: nowrap;
+}
+
+#sillypoker-panel .health-display {
+    display: flex;
+    gap: 2px;
+    flex-wrap: wrap; /* ADDED: Allow hearts to wrap to the next line */
+    max-width: 250px; /* ADDED: Constrain width to force wrapping */
+}
+
+#sillypoker-panel .heart-icon {
+    width: 20px;
+    height: 20px;
+}
+
+#sillypoker-panel .heart-icon.filled path {
+    fill: var(--health-red);
+    stroke: #c53030;
+    stroke-width: 1;
+}
+
+#sillypoker-panel .heart-icon.empty path {
+    fill: none;
+    stroke: #718096;
+    stroke-width: 1.5;
+}
+
+#sillypoker-panel .chips-display {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 1em;
+    font-weight: 500;
+    color: var(--gold-accent);
+}
+
+#sillypoker-panel .chips-display .fa-coins {
+    font-size: 0.9em;
+}
+
+/* Status Effects */
+#sillypoker-panel .status-effects-display {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding-left: 10px;
+    border-left: 1px solid var(--status-border);
+}
+
+#sillypoker-panel .status-effect-icon {
+    width: 24px;
+    height: 24px;
+    font-size: 1.2em;
+    background: #374151;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: help;
+    transition: transform 0.2s, box-shadow 0.2s;
+    border: 1px solid #4b5563;
+}
+
+#sillypoker-panel .status-effect-icon:hover {
+    transform: scale(1.15);
+    box-shadow: 0 0 8px var(--gold-accent);
+    border-color: var(--gold-accent);
+}
+
+
+/* --- REFACTORED: Global Inventory Panel --- */
+#sillypoker-panel .inventory-toggle-btn {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 25px;
+    height: 80px;
+    background-color: var(--status-bg);
+    border: 1px solid var(--status-border);
+    border-right: none;
+    border-radius: 10px 0 0 10px;
+    color: var(--text-light);
+    cursor: pointer;
+    z-index: 12;
+    transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8em;
+}
+
+#sillypoker-panel .inventory-panel {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translate(100%, -50%); /* Start hidden */
+    width: 120px;
+    max-height: 400px; /* MODIFIED: Set a max height */
+    overflow-y: auto;  /* MODIFIED: Enable vertical scrolling */
+    background: var(--status-bg);
+    border: 1px solid var(--status-border);
+    border-radius: 10px;
+    padding: 10px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    backdrop-filter: blur(5px);
+    z-index: 11;
+    transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* The .inventory-visible class is now on the main panel */
+#sillypoker-panel.inventory-visible .inventory-panel {
+    transform: translate(0, -50%);
+}
+
+#sillypoker-panel.inventory-visible .inventory-toggle-btn {
+    transform: translate(-120px, -50%);
+}
+
+#sillypoker-panel .inventory-item {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto;
+    background: #374151;
+    border-radius: 8px;
+    border: 1px solid #4b5563;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3em;
+    color: #d1d5db;
+    transition: all 0.2s ease;
+    user-select: none;
+    flex-shrink: 0;
+}
+
+#sillypoker-panel .inventory-item:not(.empty) {
+    cursor: pointer;
+}
+
+#sillypoker-panel .inventory-item:not(.empty):hover {
+    background: #4b5563;
+    border-color: var(--gold-accent);
+    transform: scale(1.1);
+}
+
+#sillypoker-panel .inventory-item.empty {
+    background: rgba(17, 24, 39, 0.5);
+    border-style: dashed;
+    font-size: 1em;
+    color: #6b7280;
+}
+
+/* ADDED: Heart beat animation for critical health */
+@keyframes heart-beat-animation {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+.heart-beat {
+    animation: heart-beat-animation 1.5s infinite ease-in-out;
+}
+
+/* ADDED: Claim Pot Button */
+@keyframes claim-glow {
+    0% { box-shadow: 0 0 5px var(--gold-accent); }
+    50% { box-shadow: 0 0 15px var(--gold-accent); }
+    100% { box-shadow: 0 0 5px var(--gold-accent); }
+}
+#sillypoker-panel .claim-pot-btn {
+    background: linear-gradient(145deg, #f9a825, #eab308);
+    color: #422006;
+    border: 1px solid #fef08a;
+    border-radius: 15px;
+    padding: 2px 10px;
+    font-size: 0.8em;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    animation: claim-glow 2s infinite ease-in-out;
+    transition: transform 0.2s;
+}
+#sillypoker-panel .claim-pot-btn:hover {
+    transform: scale(1.05);
+}
+#sillypoker-panel .claim-pot-btn .fa-treasure-chest {
+    font-size: 1.1em;
+}
+
+/* --- NEW: Custom Tooltip Styles --- */
+#sillypoker-panel .custom-tooltip {
+    position: absolute;
+    z-index: 10000;
+    background-color: rgba(17, 24, 39, 0.95);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    border: 1px solid var(--gold-accent);
+    border-radius: 8px;
+    color: var(--text-light);
+    padding: 12px;
+    font-size: 0.85em;
+    width: 250px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.5);
+    pointer-events: none;
+    transition: opacity 0.1s ease-out;
+}
+
+#sillypoker-panel .custom-tooltip.hidden {
+    display: none;
+    opacity: 0;
+}
+
+#sillypoker-panel .tooltip-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-bottom: 8px;
+    margin-bottom: 8px;
+    border-bottom: 1px solid var(--status-border);
+}
+
+#sillypoker-panel .tooltip-icon {
+    font-size: 1.8em;
+    flex-shrink: 0;
+}
+
+#sillypoker-panel .tooltip-name {
+    font-weight: 500;
+    font-size: 1.1em;
+}
+
+#sillypoker-panel .tooltip-body {
+    line-height: 1.5;
+    color: #d1d5db;
+    margin-bottom: 10px;
+}
+
+#sillypoker-panel .tooltip-footer {
+    font-size: 0.9em;
+    color: #9ca3af;
+    font-style: italic;
+    border-top: 1px solid var(--status-border);
+    padding-top: 8px;
+    margin-top: 8px;
+}

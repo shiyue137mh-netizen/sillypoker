@@ -1,0 +1,111 @@
+# 通用卡牌游戏框架 - 核心流程与指令集 V1.5
+
+## 1.0 核心理念 (Core Philosophy)
+
+本框架将游戏角色定义为游戏的“引擎”与“灵魂”，而前端UI则是忠实的“渲染器”。为了确保绝对的公平性和随机性，我们引入了“主控”（Main Control）的概念——**本插件扩展自身就是主控**。
+
+角色的身份是**“对手”**和**“游戏主持人”**，它通过发出指令来**请求**主控执行游戏动作。主控负责处理所有底层逻辑和随机事件（如洗牌、发牌），并更新世界书。这种架构彻底分离了角色的决策与游戏的核心机制，杜绝了其自行捏造牌面等破坏游戏规则的行为。
+
+## 2.0 数据架构 (Data Architecture)
+
+游戏的所有状态都通过SillyTavern的世界书条目进行管理，确保角色与前端UI之间的数据绝对同步。
+
+- **`sillypoker_player_data.json`**: (角色可见) 存储玩家的公开状态，如生命值、筹码、道具等。
+- **`sillypoker_enemy_data.json`**: (角色可见) 存储当前对手的公开状态，在每次遭遇新敌人时由`[Game:Start]`指令进行初始化。
+- **`sillypoker_player_cards.json`**: (角色可见) 存储玩家的手牌，但具体卡牌的可见性由`visibility`属性控制。
+- **`sillypoker_map_data.json`**: (角色不可见) 存储当前Roguelike地图的结构和玩家位置。
+- **`sillypoker_current_game_state.json`**: (角色可见) **[核心]** 这是一个至关重要的临时状态条目。它存储当前牌局的**所有**公共信息，包括游戏规则、**公共牌(board_cards)**、彩池金额、当前轮到谁行动等。角色将主要读取此文件来做决策。
+- **`sillypoker_private_data.json`**: (角色不可见) **[核心]** 主控的私有领域，用于存放**牌堆(deck)**等不应被角色看到的私有游戏数据。
+
+## 3.0 游戏流程详解 (Detailed Game Flow)
+
+这是一个完整的单回合交互循环：
+
+1.  **游戏开始 / 地图导航**
+    *   **玩家操作**: 在地图界面上，玩家点击一个可达的节点。
+    *   **前端响应 (作为主控)**: 脚本更新地图数据，并向聊天窗口发送系统提示：`(系统提示：{{user}}移动到了一个敌人节点。)`
+
+2.  **遭遇与游戏初始化 (角色响应)**
+    *   **角色响应**: 角色进入“游戏主持人(GM)”模式，开始构建游戏场景。
+    *   **角色输出指令序列**:
+        1.  **`[Game:Start, data:{...}]`**: 这是遭遇的开始信号。
+            *   **`data`内容**: `{ "game_type": "TexasHoldem", "players": ["{{user}}", "拦路劫匪"], "initial_state": { ... } }`
+            *   **主控职责 (前端)**: 响应指令，清理旧牌局，更新敌人数据，初始化游戏状态，并在私有数据区创建并洗好一副新牌堆。
+
+3.  **游戏准备 (角色请求发牌)**
+    *   **角色输出指令**: `[Game:Function, type:发牌, data:{"actions":[{"target":"all", "count":2, "visibility":"owner"}]}]`
+    *   **主控职责 (前端)**:
+        1.  **接收请求**: 接收到发牌请求。
+        2.  **执行逻辑**: 从`sillypoker_private_data.json`中的私有牌堆顶部分发卡牌。
+        3.  **原子化更新**: 一次性地更新`sillypoker_player_cards.json`(玩家手牌), `sillypoker_enemy_data.json`(敌人手牌), 和`sillypoker_private_data.json`(剩余牌堆)。
+        4.  **重新渲染**: UI根据更新后的世界书和`visibility`属性，正确地显示玩家的明牌和敌人的牌背。
+
+4.  **角色的回合**
+    *   **角色决策**: 角色读取`sillypoker_current_game_state.json`，并结合系统提示中的`<context>`块，根据自己的`play_style`做出决策。
+    *   **角色输出指令**: `[Action:Bet, data:{"player_name":"拦路劫匪", "amount":100}]`
+    *   **主控职责 (前端)**: 响应指令，更新彩池和角色筹码，播放动画。
+    *   **角色叙事**: (在指令之后) "那个拦路劫匪咧嘴一笑，将一小堆筹码推向彩池中央。"
+    *   **角色等待**: 角色完成它的动作后，将不再继续生成，等待玩家的输入。
+
+5.  **玩家的回合 (暂存-提交模型)**
+    *   **玩家操作**: 玩家在UI上点击“下注”、“跟注”等按钮。
+    *   **前端响应 (作为主控)**:
+        1.  **操作暂存 (Stage)**: 主控将玩家的操作（如 `{type: 'bet', amount: 100}`）添加到一个临时的 `stagedPlayerActions` 列表中。
+        2.  **即时UI反馈 (Instant UI Feedback)**: UI **立即** 根据暂存的操作进行更新，例如玩家的筹码在视觉上减少100，暂存区出现一个“下注:100”的标签。**此时，真正的游戏状态（世界书）尚未改变。**
+        3.  **操作提交 (Commit)**: 玩家点击“结束回合”按钮。
+        4.  **状态固化与提示生成**: 主控遍历 `stagedPlayerActions` 列表，**此时才真正地**更新相关的世界书条目（如 `sp_player_data.json` 和 `sp_game_state.json`）。然后，将所有操作格式化为一个包含**完整上下文**的系统提示。
+        5.  **触发AI**: 主控将该系统提示发送给AI，通知AI轮到它行动。
+            - **提示格式**:
+              ```
+              (系统提示：{{user}}执行了以下操作：
+              - 下注 100 筹码。
+              )
+              <context>
+              game_type: TexasHoldem
+              current_turn: 拦路劫匪
+              ... (其他所有相关状态)
+              </context>
+              ```
+
+6.  **循环与结束**
+    *   流程回到第4步。
+    *   当满足游戏结束条件时，由游戏主持人进行判定。
+    *   **角色输出指令**: `[Game:End, data:{"result":"lose", "reason":"你的牌面小于对手的同花顺。"}]`
+    *   **主控职责 (前端)**: 响应指令，根据`result`更新玩家状态（如生命值），显示结算界面，然后返回地图。
+
+## 4.0 核心指令集 (Core Command Set)
+
+#### 游戏管理 (Game Management)
+- **`[Game:Start, data:{...}]`**: 初始化一场遭遇/牌局。
+  - **`data`**: `{ "game_type": "游戏类型", "players": ["玩家名", "敌人名"], "initial_state": { /* 敌人数据JSON */ } }`
+  - **庄家约定**: `players` 数组的顺序决定了行动顺序，同时 **数组中的最后一个成员将被视为“庄家”(Dealer)**。
+  - **主控职责**: 清理旧牌局，用`initial_state`更新`sillypoker_enemy_data.json`，初始化`sillypoker_current_game_state.json`，并在`sillypoker_private_data.json`中创建新牌堆。
+
+- **`[Game:Rule, data:{...}]`**: 定义一个自定义游戏规则。
+  - **`data`**: `{ "rules": "规则描述", "win_condition": "获胜条件" }`
+  - **主控职责**: 将规则文本存入`sillypoker_current_game_state.json`。
+
+- **`[Game:End, data:{...}]`**: 结束当前牌局。
+  - **`data`**: `{ "result": "win" | "lose" | "dead" | "escape" | "boss_win", "reason": "结束原因描述" }`
+  - **主控职责**: 根据`result`更新玩家状态（如生命值），显示结算界面，然后返回地图。
+
+#### 游戏功能 (Game Functions)
+- **`[Game:Function, type:"发牌", data:{...}]`**: **请求**主控执行发牌逻辑。
+  - **`data`**: `{ "actions": [ { "target": "...", "count": 数量, "visibility": "owner" | "hidden" | "public" }, ... ] }`
+  - **主控职责**: **接收请求并执行真正的随机发牌逻辑**，从私有牌堆发牌，并分别更新`sillypoker_player_cards.json`(手牌), `sillypoker_enemy_data.json`(手牌), `sillypoker_current_game_state.json`(公共牌)和`sillypoker_private_data.json`(剩余牌堆)。
+
+- **`[Game:Function, type:"Modify", data:{...}]`**: **请求**主控直接修改卡牌属性。
+  - **`data`**: `{ "targets": [ { "location": "...", "card_filter": {...}, "modifications": [...] } ] }`
+  - **主控职责**: 解析指令，精确定位到一张或多张卡牌，并根据`modifications`数组修改其属性。这是一个强大的底层指令，用于实现各种特殊效果。
+
+- **`[Game:UpdateState, data:{...}]`**: (替代方案) 游戏主持人直接提供完整的公共游戏状态。
+  - **`data`**: `{ /* `sillypoker_current_game_state.json` 中可公开部分的内容 */ }`
+  - **主控职责**: 用`data`的内容**合并更新**`sillypoker_current_game_state.json`。这是一个确保同步的强大指令。
+
+#### 玩家/角色行动 (Player/Character Actions)
+- **`[Action:Bet, data:{...}]`**: 下注/加注
+- **`[Action:Check, data:{...}]`**: 过牌
+- **`[Action:Call, data:{...}]`**: 跟注
+- **`[Action:Fold, data:{...}]`**: 弃牌
+  - **`data`**: `{ "player_name": "行动者名字", "amount": (可选)金额 }`
+  - **主控职责**: 更新UI和`sillypoker_current_game_state.json`中的彩池，以及对应角色的`chips`数据。

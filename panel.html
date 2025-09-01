@@ -1,0 +1,32 @@
+
+<div id="sillypoker-panel" class="hidden">
+    <div class="sillypoker-header">
+        <div class="header-left-icons">
+            <div id="sillypoker-status-indicator" class="status-indicator" title="游戏书状态">
+                <i class="fas fa-check"></i>
+            </div>
+            <i id="gm-draw-card-btn" class="fas fa-hand-sparkles sillypoker-header-btn" title="GM抽牌"></i>
+            <!-- HUD will be rendered here directly by ui.js -->
+        </div>
+        <div class="header-title">
+            <h3>SillyPoker</h3>
+        </div>
+        <div class="header-right-icons">
+             <i id="sillypoker-surrender-btn" class="fas fa-flag sillypoker-header-btn" title="放弃"></i>
+             <i id="sillypoker-beg-btn" class="fas fa-praying-hands sillypoker-header-btn" title="求饶"></i>
+             <i id="sillypoker-escape-btn" class="fas fa-running sillypoker-header-btn" title="尝试逃跑"></i>
+             <button class="sillypoker-close-btn sillypoker-header-btn" title="关闭">&times;</button>
+        </div>
+    </div>
+    <div id="sillypoker-tabs-container"></div>
+    <div class="sillypoker-content">
+        <!-- Content is now dynamically rendered by ui.js -->
+        <div class="sillypoker-content-centerer" id="sillypoker-initial-loader">
+            <p>正在初始化...</p>
+        </div>
+    </div>
+    <div id="sillypoker-inventory-wrapper">
+        <!-- Persistent inventory will be rendered here -->
+    </div>
+    <div id="sillypoker-custom-tooltip" class="custom-tooltip hidden"></div>
+</div>

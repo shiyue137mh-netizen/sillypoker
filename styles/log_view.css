@@ -1,0 +1,47 @@
+:root {
+    --log-bg: #111827;
+    --log-text: #d1d5db;
+    --log-timestamp: #6b7280;
+    --log-success-color: #a6e22e;
+    --log-warn-color: #f4bf75;
+    --log-error-color: #f92672;
+    --log-info-color: #66d9ef;
+}
+
+#sillypoker-panel .log-view-container {
+    flex-grow: 1; /* Key change for scrolling */
+    background-color: var(--log-bg);
+    color: var(--log-text);
+    font-family: monospace;
+    font-size: 0.65em;
+    padding: 15px;
+    padding-right: 20px; /* Add some space for the scrollbar */
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+    box-sizing: border-box;
+    min-height: 0; /* Ensure it can shrink */
+}
+
+#sillypoker-panel .log-entry {
+    padding: 1px 0; /* Further reduced padding for compactness */
+}
+
+#sillypoker-panel .log-timestamp {
+    color: var(--log-timestamp);
+    margin-right: 10px;
+}
+
+#sillypoker-panel .log-level {
+    font-weight: bold;
+    margin-right: 10px;
+}
+
+#sillypoker-panel .log-level-LOG { color: var(--log-info-color); }
+#sillypoker-panel .log-level-SUCCESS { color: var(--log-success-color); }
+#sillypoker-panel .log-level-WARN { color: var(--log-warn-color); }
+#sillypoker-panel .log-level-ERROR { color: var(--log-error-color); }
+
+#sillypoker-panel .log-message {
+    display: inline;
+}

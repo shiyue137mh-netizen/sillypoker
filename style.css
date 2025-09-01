@@ -1,0 +1,14 @@
+/* 
+  This file now acts as the main entry point for all stylesheets.
+  Styles have been modularized into separate files for better organization.
+*/
+
+@import url('styles/base.css');
+@import url('styles/game.css');
+@import url('styles/cards.css');
+@import url('styles/map.css');
+@import url('styles/player_status.css');
+@import url('styles/rules.css');
+@import url('styles/log_view.css');
+@import url('styles/history_panel.css');
+@import url('styles/story.css');

@@ -1,0 +1,9 @@
+{
+  "name": "{{user}}",
+  "health": 3,
+  "max_health": 3,
+  "chips": 1000,
+  "claimable_pot": 0,
+  "inventory": [],
+  "status_effects": []
+}

@@ -1,0 +1,10 @@
+
+{
+  "display_name": "AI Card Table",
+  "author": "AI Engineer",
+  "version": "8.6.1",
+  "description": "[紧急修复] 恢复了因版本回退而丢失的大量核心功能（Meta进度、多模式、地图、UI事件等）。[增强] 改进了回合制逻辑与卡牌UI，并新增了版本更新检查功能。",
+  "js": "script.js",
+  "css": "style.css",
+  "html": "panel.html"
+}
